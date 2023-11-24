@@ -69,6 +69,7 @@ const fetchButton = document.getElementById('fetchButton');
                       const envId = environment.id;
                       const envName = environment.name;
                       const isActive = environment.is_user_active;
+                      const lastActivityAt = environment.last_activity_at;
 
 
                         // Push the extracted data into the array
@@ -76,6 +77,7 @@ const fetchButton = document.getElementById('fetchButton');
                             envId,
                             envName,
                             isActive,
+                            lastActivityAt
                             
                         });
                   });
@@ -93,7 +95,7 @@ const fetchButton = document.getElementById('fetchButton');
             console.log(extractedData)
 
             // Define the fields you want to include in the CSV
-            const fields = ['firstName', 'lastName', 'email', 'projectId', 'projectName', 'envId', 'envName', 'isActive', 'userId'];
+            const fields = ['firstName', 'lastName', 'email', 'projectId', 'projectName', 'envId', 'envName', 'isActive', 'lastActivityAt', 'userId'];
 
             // Create a CSV header with field names
             const csvHeader = fields.join(';') + '\n';
