@@ -1,4 +1,6 @@
-# Subscription user export
+# Kontent.ai Subscription User Export
+
+Tool to export the data about users in subscription using Subscripton API. 
 
 You will need to enter your Subscription ID and Subscription API Key. Only the Subscription Admins can access this and I strongly recommend NOT to share your API key with anyone else. 
 
