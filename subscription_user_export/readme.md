@@ -10,6 +10,7 @@ Basically, just click on your initials / Subscriptions / Subscription API, and t
 
 <img width="774" alt="image" src="https://github.com/lukas-lacko/kontent.ai/assets/80037957/83766110-0b1b-426f-8302-34f0b3dcd2cb">
 
+
 To make export work, enter your Subscription ID and Subscription API Key and hit Export button.
 <img width="367" alt="image" src="https://github.com/lukas-lacko/kontent.ai/assets/80037957/24991c66-2e88-4180-bcf4-d29860fa9d72">
 
