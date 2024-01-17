@@ -117,7 +117,7 @@
         var codename = document.getElementById('codename').value;
         var bearerToken = document.getElementById('bearerToken').value; 
         console.log(bearerToken);
-        // ked toto spravne odifujem, tak mam hotovo :D 
+        // checks if Preview API is used, if not, calls Delivery API at least for published items
         if (bearerToken === "") {
             fetchItemIdDeliver(environmentId, codename)
         } else {
