@@ -18,7 +18,7 @@
 
             .container {
             max-width: 400px;
-            padding: 20px;
+            padding: 50px;
             background-color: #fff;
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
@@ -128,20 +128,20 @@
 </script>
 </head>
 <body>
-    <div class="container">
+<div class="container">
 <h1>Kontent.ai - Generate link to the UI from the codename</h1>
-<div>
+
     <label for="environmentId">Environment ID:</label>
-    <input type="text" id="environmentId" placeholder="Enter Environment ID">
-</div>
-<div>
+    <input type="text" id="environmentId" placeholder="Enter Environment ID" autocomplete="off">
+
+
     <label for="bearerToken">Preview API Key:</label>
-    <input type="text" id="bearerToken" placeholder="Enter Preview API Key ">
-</div>
-<div>
+    <input type="text" id="bearerToken" placeholder="Enter Preview API Key " autocomplete="off">
+
+
     <label for="codename">Codename:</label>
-    <input type="text" id="codename" placeholder="Enter codename">
-</div>
+    <input type="text" id="codename" placeholder="Enter codename" autocomplete="off">
+
 <button onclick="handleGenerateLink()">Generate Link</button>
 <p>Item Link: <a id="result" href="#" target="_blank">Not generated, yet</p></div>
 </div>
