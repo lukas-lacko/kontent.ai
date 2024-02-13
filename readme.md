@@ -2,7 +2,7 @@
 
 [Subscription user export](https://nestratsa.sk/temp/kontent/subscription_user_export)
 
-[Export asset info] (https://nestratsa.sk/temp/kontent/export_asset_info/)
+[Export asset info](https://nestratsa.sk/temp/kontent/export_asset_info/)
 
 [Generate link to the UI from the codename](https://nestratsa.sk/temp/kontent/codename_to_ui)
 
