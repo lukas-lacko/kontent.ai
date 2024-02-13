@@ -133,6 +133,3 @@ const fetchButton = document.getElementById('fetchButton');
       fetchPageOfData();
 
       }
-
-    // Initial fetch to load all pages of data
-    //fetchAllUserData();
