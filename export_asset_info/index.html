@@ -1,0 +1,82 @@
+<html>
+    <head>
+        <title>
+            Export Information about Assets with API
+        </title>
+
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure the full viewport height is covered */
+            }
+
+            .container {
+            max-width: 400px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            }
+
+            .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+         }
+
+            label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            }
+
+            input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            }
+
+            button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            }
+
+            button:hover {
+            background-color: #0056b3;
+            }
+          </style>
+        
+
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Export Information about Assets with API</h1>
+                <label for="envId">Enter Environment ID:</label>
+                <input type="text" id="envId" placeholder="Env ID" autocomplete="off">
+                <label for="bearerToken">Enter Your Management API Key:</label>
+                <input type="text" id="bearerToken" placeholder="Management API Key" autocomplete="off">
+                <button id="fetchButton" onclick="fetchAllUserData()">Export Assets</button>
+            <div id="errorContainer" class="error"></div>
+        </div>
+      
+
+        <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+        <script type="text/javascript" src="index.js"></script>
+    
+
+    </body>
+</html>
