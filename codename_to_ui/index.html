@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontent.ai - Generate link to the UI from the codename</title>
+<style>
+          body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure the full viewport height is covered */
+            }
+
+            .container {
+            max-width: 400px;
+            padding: 50px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            }
+
+            .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+         }
+
+            label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            }
+
+            input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            }
+
+            button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            }
+
+            button:hover {
+            background-color: #0056b3;
+            }
+</style>
+<script>
+
+    //works for all items
+    function fetchItemId(environmentId, codename, bearerToken) {
+        var xhr = new XMLHttpRequest();
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    console.log(response)
+                    var itemId = response.item.system.id; 
+                    generateLink(environmentId, itemId);
+                } else {
+                    console.error('There was a problem with the request.');
+                }
+            }
+        };
+
+        var apiUrl = 'https://preview-deliver.kontent.ai/' + environmentId + '/items/' + codename;
+        xhr.open('GET', apiUrl, true);
+
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + bearerToken); // Include Bearer token
+        
+        xhr.send();
+    }
+
+    // For the use case when no Preview API is entered (works only for published items, if Secured Access is not activated)
+    function fetchItemIdDeliver(environmentId, codename) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    console.log(response)
+                    var itemId = response.item.system.id; 
+                    generateLink(environmentId, itemId);
+                } else {
+                    console.error('There was a problem with the request.');
+                }
+            }
+        };
+        xhr.open('GET', 'https://deliver.kontent.ai/' + environmentId + '/items/' + codename, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send();
+    }
+    
+    function generateLink(environmentId, itemId) {
+        var link = 'https://app.kontent.ai/' + environmentId + '/content-inventory/00000000-0000-0000-0000-000000000000/content/' + itemId;
+        document.getElementById('result').href = link;
+        document.getElementById('result').textContent = link;
+    }
+    
+    function handleGenerateLink() {
+        var environmentId = document.getElementById('environmentId').value;
+        var codename = document.getElementById('codename').value;
+        var bearerToken = document.getElementById('bearerToken').value; 
+        console.log(bearerToken);
+        // checks if Preview API is used, if not, calls Delivery API at least for published items
+        if (bearerToken === "") {
+            fetchItemIdDeliver(environmentId, codename)
+        } else {
+            fetchItemId(environmentId, codename, bearerToken);
+        }
+       
+    }
+</script>
+</head>
+<body>
+<div class="container">
+<h1>Kontent.ai - Generate link to the UI from the codename</h1>
+
+    <label for="environmentId">Environment ID:</label>
+    <input type="text" id="environmentId" placeholder="Enter Environment ID" autocomplete="off">
+
+
+    <label for="bearerToken">Preview API Key:</label>
+    <input type="text" id="bearerToken" placeholder="Enter Preview API Key " autocomplete="off">
+
+
+    <label for="codename">Codename:</label>
+    <input type="text" id="codename" placeholder="Enter codename" autocomplete="off">
+
+<button onclick="handleGenerateLink()">Generate Link</button>
+<p>Item Link: <a id="result" href="#" target="_blank">Not generated, yet</p></div>
+</div>
+</body>
+</html>
