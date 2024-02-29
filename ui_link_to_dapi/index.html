@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI link to Delivery API link</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 300px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        #languageResult {
+            margin-top: 10px;
+        }
+
+        #linkResult {
+            margin-top: 10px;
+        }
+
+        #apiResponse {
+            margin-top: 10px;
+        }
+
+        #authTokenInput {
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+</head>
+<body>
+    <label for="urlInput">Enter URL:</label>
+    <input type="text" id="urlInput" placeholder="https://app.kontent.ai/..." autocomplete="off">
+    <label for="authToken">Enter Secured Access Token (optional):</label>
+    <input type="text" id="authToken" placeholder="Enter your token" autocomplete="off">
+    <br>
+    <button onclick="parseUrl()">Generate link</button>
+
+    
+
+
+
+
+
+    <div id="result"></div>
+
+    <div id="languageResult"></div>
+
+    <div id="linkResult"></div>
+
+    <div id="apiResponse"></div>
+
+   
+
+    <script>
+        let environmentID, languageID, itemID, codename, authToken; // Define constants outside functions
+        
+
+
+        function extractIdsFromUrl(url) {
+            const pattern = /https:\/\/app\.kontent\.ai\/([^\/]+)\/content-inventory\/([^\/]+)\/content\/([^\/]+)/;
+            const match = url.match(pattern);
+
+            if (match) {
+                environmentID = match[1];
+                languageID = match[2];
+                itemID = match[3];
+
+            if (authToken === "") {
+                getLanguageCodename();
+            } else {
+                getLanguageCodenameWithToken();
+            }
+
+            return true;
+            
+
+
+                
+            } else {
+                return false;
+            }
+        }
+
+           
+
+        function parseUrl() {
+            authToken = document.getElementById('authToken').value;
+            const urlInput = document.getElementById('urlInput').value;
+            const resultContainer = document.getElementById('result');
+            
+            const apiResponseContainer = document.getElementById('apiResponse');
+            apiResponseContainer.innerHTML = `<p></p>`;
+
+
+            if (extractIdsFromUrl(urlInput)) {
+                resultContainer.innerHTML = `
+                    <p><strong>Environment ID:</strong> ${environmentID}</p>
+                    <p><strong>Language ID:</strong> ${languageID}</p>
+                    <p><strong>Item ID:</strong> ${itemID}</p>
+                `;
+            } else {
+                resultContainer.innerHTML = `<p style="color: red;">Invalid URL format</p>`;
+            }
+        }
+
+        function getLanguageCodenameWithToken() {
+            let authToken = document.getElementById('authToken').value;
+            const languageResultContainer = document.getElementById('languageResult');
+
+            // Fetch language information from Kontent API
+
+            fetch(`https://deliver.kontent.ai/${environmentID}/languages`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            })
+            .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else if (response.status === 401) {
+                        languageResultContainer.innerHTML = `<p style="color: red;">Authentication required (401 Unauthorized)</p>`;
+                        throw new Error('Authentication required');
+                    } else {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    const language = data.languages.find(lang => lang.system.id === languageID);
+
+                    if (language) {
+                        codename = language.system.codename;
+                        languageResultContainer.innerHTML = `<p><strong>Language Codename:</strong> ${codename}</p>`;
+                        generateClickableLinkWithToken();
+                    } else {
+                        languageResultContainer.innerHTML = `<p style="color: red;">Language not found</p>`;
+                    }
+                })
+                .catch(error => {
+                    if (error.message === 'Authentication required') {
+                    } else {
+                        languageResultContainer.innerHTML += `<p style="color: red;">Error fetching language information: ${error.message}</p>`;
+                    }
+                });
+        }
+
+        function getLanguageCodename() {
+            const languageResultContainer = document.getElementById('languageResult');
+
+            // Fetch language information from Kontent API
+            fetch(`https://deliver.kontent.ai/${environmentID}/languages`)
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else if (response.status === 401) {
+                        languageResultContainer.innerHTML = `<p style="color: red;">Authentication required (401 Unauthorized)</p>`;
+                        throw new Error('Authentication required');
+                    } else {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    const language = data.languages.find(lang => lang.system.id === languageID);
+
+                    if (language) {
+                        codename = language.system.codename;
+                        languageResultContainer.innerHTML = `<p><strong>Language Codename:</strong> ${codename}</p>`;
+                        generateClickableLink();
+                    } else {
+                        languageResultContainer.innerHTML = `<p style="color: red;">Language not found</p>`;
+                    }
+                })
+                .catch(error => {
+                    if (error.message === 'Authentication required') {
+                    } else {
+                        languageResultContainer.innerHTML += `<p style="color: red;">Error fetching language information: ${error.message}</p>`;
+                    }
+                });
+        }
+
+        function generateClickableLink() {
+            const linkResultContainer = document.getElementById('linkResult');
+
+            // Generate clickable link
+            const clickableLink = `https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`;
+            linkResultContainer.innerHTML = `
+                <p><strong>Clickable Link:</strong> <a href="${clickableLink}" target="_blank">${clickableLink}</a></p>`;
+            fetchApiResponse();
+        }
+
+        function generateClickableLinkWithToken() {
+            const linkResultContainer = document.getElementById('linkResult');
+
+            // Generate clickable link
+            const clickableLink = `https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`;
+            linkResultContainer.innerHTML = `
+                <p><strong>Clickable Link:</strong> <a href="${clickableLink}" target="_blank">${clickableLink}</a></p>`;
+            fetchAuthenticatedApiResponse();
+
+        }
+
+    function fetchApiResponse() {
+    const apiResponseContainer = document.getElementById('apiResponse');
+    apiResponseContainer.innerHTML = `<p><strong>Authenticated API Response:</strong></p>`;
+
+    // Fetch data from the clickable link
+    fetch(`https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`, {
+        headers: {
+            'X-KC-Wait-For-Loading-New-Content':'true'
+        }
+    })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+        })
+        .then(data => {
+            const prettifiedJson = JSON.stringify(data, null, 2); // Use 2 spaces for indentation
+            apiResponseContainer.innerHTML = `
+                <p><strong>API Response:</strong></p>
+                <pre><code class="json">${prettifiedJson}</code></pre>
+            `;
+            hljs.highlightBlock(apiResponseContainer.querySelector('code')); // Highlight the code block
+        })
+        .catch(error => {
+            if (error.message === 'Authentication required') {
+            } else {
+                apiResponseContainer.innerHTML += `<p style="color: red;">Error fetching API response: ${error.message}</p>`;
+            }
+        });
+}
+
+        function fetchAuthenticatedApiResponse() {
+    const apiResponseContainer = document.getElementById('apiResponse');
+    authToken = document.getElementById('authToken').value;
+
+    // Fetch data from the clickable link with authentication
+    fetch(`https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`, {
+        headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'X-KC-Wait-For-Loading-New-Content':'true'
+        }
+    })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+        })
+        .then(data => {
+            const prettifiedJson = JSON.stringify(data, null, 2); // Use 2 spaces for indentation
+            apiResponseContainer.innerHTML = `
+                <p><strong>Authenticated API Response:</strong></p>
+                <pre><code class="json">${prettifiedJson}</code></pre>
+            `;
+            hljs.highlightBlock(apiResponseContainer.querySelector('code')); // Highlight the code block
+        })
+        .catch(error => {
+            apiResponseContainer.innerHTML += `<p style="color: red;">Error fetching authenticated API response: ${error.message}</p>`;
+        });
+    }
+
+    </script>
+</body>
+</html>
