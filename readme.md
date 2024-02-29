@@ -6,7 +6,7 @@
 
 [Generate link to the UI from the codename](https://nestratsa.sk/temp/kontent/codename_to_ui)
 
-[UI link to Delivery API](https://nestratsa.sk/temp/kontent/codename_to_ui](https://nestratsa.sk/temp/kontent/ui_link_to_dapi/)
+[UI link to Delivery API](https://nestratsa.sk/temp/kontent/ui_link_to_dapi/)
 
 
 Feel free to download and use or edit them as you need.
