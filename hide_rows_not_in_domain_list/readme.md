@@ -20,9 +20,9 @@ This VBA script hides rows for email addresses not included in your specified do
    - Copy and paste the provided VBA code into the module.
   
    - Side note: make sure that the script matches your report:
-        <img width="512" alt="image" src="https://github.com/lukas-lacko/kontent.ai/assets/80037957/64aab411-2d1d-4298-8e1d-9b87101a357c">
-
-
+  
+   <img width="512" alt="image" src="https://github.com/lukas-lacko/kontent.ai/assets/80037957/64aab411-2d1d-4298-8e1d-9b87101a357c">
+   
 4. **Run the Macro:**
    - Close the VBA editor.
    - Press Alt + F8, select FilterByDomain, and click Run.
