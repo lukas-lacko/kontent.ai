@@ -21,7 +21,8 @@ This VBA script hides rows for email addresses not included in your specified do
   
    - Side note: make sure that the script matches your report:
   
-   <img width="512" alt="image" src="https://github.com/lukas-lacko/kontent.ai/assets/80037957/64aab411-2d1d-4298-8e1d-9b87101a357c">
+   <img width="512" alt="image" src="https://github.com/lukas-lacko/kontent.ai/assets/80037957/93e99fa8-3f10-4cc9-a946-7897b0b4781f">
+
    
 4. **Run the Macro:**
    - Close the VBA editor.
