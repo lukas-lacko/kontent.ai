@@ -9,12 +9,12 @@ This VBA script hides rows for email addresses not included in your specified do
 
 2. **Create a New Worksheet:**
    - Add a new sheet named **Domains**.
-   - List all the email domains you want to filter by in column A. The script can handle also the domains in single quotes or with @ in front of them. So for instance, they can be listed as:
+   - List all the email domains you want to filter by in column A. The script can also handle the domains in single quotes or with @ in front of them. So for instance, they can be listed as:
      - `breakfastmail.com`
      - `'magicmail.net'`
      - `@example.com`
 
-3. **Add the VBA Code:**
+3. **Add the VBA Code (script.bas):**
    - Open the VBA editor (Alt + F11).
    - Insert a new module (Insert > Module).
    - Copy and paste the provided VBA code into the module.
