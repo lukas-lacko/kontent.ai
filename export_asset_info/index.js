@@ -45,6 +45,7 @@ const fetchButton = document.getElementById('fetchButton');
             jsonData.assets.forEach((asset) => {
                 const file_name = asset.file_name;
                 const id = asset.id;
+                const size = asset.size;
                 const foldId = asset.folder && asset.folder.id ? asset.folder.id : 'No Folder';
                 const url = asset.url;
 
@@ -52,6 +53,7 @@ const fetchButton = document.getElementById('fetchButton');
               extractedData.push({
                 file_name,
                 id,
+                size,
                 foldId,
                 url,
             });
@@ -69,7 +71,7 @@ const fetchButton = document.getElementById('fetchButton');
             console.log(extractedData)
 
             // Define the fields you want to include in the CSV
-            const fields = ['file_name', 'id', 'foldId', 'url'];
+            const fields = ['file_name', 'id', 'size', 'foldId', 'url'];
 
             // Create a CSV header with field names
             const csvHeader = fields.join(';') + '\n';
