@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontent.ai - Find items by their element types</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+  }
+
+  h1 {
+    text-align: center;
+    color: #333;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+  }
+
+  button {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  input[type="text"],
+  select {
+    width: 100%;
+    max-width: 300px;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  #output {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  b {
+    color: #007bff;
+  }
+
+  a {
+    color: #007bff;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  #pre-output {
+    margin-bottom: 10px;
+  }
+
+  #loadingMessage {
+    display: none;
+    font-weight: bold;
+  }
+
+  .error {
+    color: red;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  /* Modify this for inline button and selector */
+  #language {
+    display: inline-block;
+    margin-left: 10px;
+    width: auto;
+  }
+
+  #fetchLanguagesBtn {
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+  <h1>Kontent.ai - Find items by their element types</h1>
+
+  <div id="errorMessage" class="error" style="display: none;"></div> <!-- Error message container -->
+
+  <label for="environmentId">Enter Environment ID:</label>
+  <input type="text" id="environmentId" placeholder="Your Environment ID"><br><br>
+
+  <label for="previewApiKey">Enter Preview API Key (optional):</label>
+  <input type="text" id="previewApiKey" placeholder="Your Preview API Key"><br><br>
+  
+  <label for="type">Select Element Type:</label>
+  <select id="type">
+    <option value="asset">Asset</option>
+    <option value="custom">Custom element</option>
+    <option value="date_time">Date & time</option>
+    <option value="modular_content">Linked items</option>
+    <option value="multiple_choice">Multiple choice</option>
+    <option value="number">Number</option>
+    <option value="rich_text">Rich text</option>
+    <option value="taxonomy">Taxonomy</option>
+    <option value="text">Text</option>
+    <option value="url_slug">Url slug</option>    
+  </select><br><br>
+
+  <button onclick="fetchData()">Fetch Data</button>
+  <button id="fetchLanguagesBtn" onclick="fetchLanguages()">Fetch Languages (optional)</button>
+  
+  <select id="language" style="display: none;">
+    <option value="">Select Language</option>
+  </select><br><br>
+
+  <div id="pre-output">
+    <p id="loadingMessage"><b><br>Loading items...</b></p>
+  </div>
+  <div id="output" style="display: none;"></div>
+
+  <script>
+    let type;
+    let languageCodenames = [];
+
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.style.display = 'none';
+    }
+
+    function fetchData() {
+      // Clear any previous errors
+      hideError();
+
+      type = document.getElementById('type').value;
+      const environmentId = document.getElementById('environmentId').value;
+      const previewApiKey = document.getElementById('previewApiKey').value;
+      const selectedLanguage = document.getElementById('language').value;
+
+      // Validate input
+      if (!environmentId) {
+        showError("Environment ID is required.");
+        return;
+      }
+      if (!type) {
+        showError("Please select an element type.");
+        return;
+      }
+
+      // Show the loading message when the fetch operation starts
+      document.getElementById('loadingMessage').style.display = 'block';
+      
+      const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+      const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+
+      let url = `${baseUrl}/${environmentId}/types`;
+      if (selectedLanguage) {
+        url += `?language=${selectedLanguage}`;
+      }
+
+      fetch(url, { headers })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error fetching types.');
+          }
+          return response.json();
+        })
+        .then(data => {
+          const systemCodenames = [];
+
+          data.types.forEach(typeData => {
+            for (const elementName in typeData.elements) {
+              if (typeData.elements[elementName].type === type) {
+                if (!systemCodenames.includes(typeData.system.codename)) {
+                  systemCodenames.push(typeData.system.codename);
+                }
+              }
+            }
+          });
+
+          const output = document.getElementById('output');
+          output.innerHTML = `<p><b>Content Type Codenames with <i>${type}</i> element</b>: ${systemCodenames.join(', ')}</p>`;
+
+          fetchContentItems(environmentId, systemCodenames, previewApiKey, selectedLanguage);
+
+          output.style.display = 'block';
+        })
+        .catch(error => {
+          showError("An error occurred while fetching data.");
+          console.error('Error fetching data:', error);
+        });
+    }
+
+    function fetchContentItems(environmentId, systemCodenames, previewApiKey, language) {
+      const output = document.getElementById('output');
+      let systemTypesQuery = systemCodenames.join(',');
+      let nextPageUrl = `${previewApiKey ? 'https://preview-deliver.kontent.ai' : 'https://deliver.kontent.ai'}/${environmentId}/items?system.type[in]=${systemTypesQuery}&limit=1000`;
+
+      if (language) {
+        nextPageUrl += `&language=${language}&system.language=${language}`;
+      }
+
+      let allItemCodenames = [];
+
+      function fetchNextPage(url) {
+        fetch(url, {
+          headers: previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {}
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error fetching content items.');
+          }
+          return response.json();
+        })
+        .then(itemsData => {
+          const itemCodenames = itemsData.items.map(item => item.system.codename);
+          allItemCodenames.push(...itemCodenames);
+
+          output.innerHTML = `<p><b>Content Item Codenames:</b> ${allItemCodenames.join(', ')}</p>`;
+
+          // If there is pagination, continue fetching next pages
+          if (itemsData.pagination && itemsData.pagination.next_page) {
+            fetchNextPage(itemsData.pagination.next_page);
+          } else {
+            // All pages are fetched now, so remove the loading message
+            document.getElementById('loadingMessage').style.display = 'none';
+
+            // Create the base URL for the link
+            let linkUrl = `${previewApiKey ? 'https://preview-deliver.kontent.ai' : 'https://deliver.kontent.ai'}/${environmentId}/items?system.type[in]=${systemTypesQuery}`;
+
+            // Add the language parameter if a language is selected
+            const selectedLanguage = document.getElementById('language').value;
+            if (selectedLanguage) {
+              linkUrl += `&language=${selectedLanguage}&system.language=${selectedLanguage}`;
+            }
+
+            // Create the link element
+            const linkElement = document.createElement('a');
+            linkElement.href = linkUrl;
+            linkElement.target = "_blank";
+            linkElement.textContent = `Kontent.ai Delivery API URL`;
+
+            // Create a <br> element
+            const brElement = document.createElement('br');
+
+            // Append the <br> element before the link
+            output.appendChild(brElement);
+            output.appendChild(linkElement);
+            output.innerHTML += `<br><br><p><b>Content Type Codenames with <i>${type}</i> element</b>: ${systemCodenames.join(', ')}</p>`;
+          }
+        })
+        .catch(error => {
+          showError("An error occurred while fetching content items.");
+          console.error('Error fetching content items:', error);
+        });
+      }
+
+      fetchNextPage(nextPageUrl);
+    }
+
+    function fetchLanguages() {
+      const environmentId = document.getElementById('environmentId').value;
+      const previewApiKey = document.getElementById('previewApiKey').value;
+
+      if (!environmentId) {
+        showError("Environment ID is required to fetch languages.");
+        return;
+      }
+
+      const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+      const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+
+      fetch(`${baseUrl}/${environmentId}/languages`, { headers })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error fetching languages.');
+          }
+          return response.json();
+        })
+        .then(data => {
+          const languageSelector = document.getElementById('language');
+          languageCodenames = data.languages.map(lang => lang.system.codename);
+          
+          // Populate the language selector with the language codename options
+          languageSelector.innerHTML = '<option value="">Select Language</option>';
+          languageCodenames.forEach(codename => {
+            const option = document.createElement('option');
+            option.value = codename;
+            option.textContent = codename;
+            languageSelector.appendChild(option);
+          });
+
+          // Hide the Fetch Languages button
+          document.getElementById('fetchLanguagesBtn').style.display = 'none';
+          
+          // Show the language selector in the same spot as the button
+          languageSelector.style.display = 'inline-block';
+        })
+        .catch(error => {
+          showError("An error occurred while fetching languages.");
+          console.error('Error fetching languages:', error);
+        });
+    }
+  </script>
+</body>
+</html>
