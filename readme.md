@@ -8,5 +8,6 @@
 
 [UI link to Delivery API](https://nestratsa.sk/temp/kontent/ui_link_to_dapi/)
 
+[Find items by their element types](https://nestratsa.sk/temp/kontent/find_items_by_element_type/)
 
 Feel free to download and use or edit them as you need.
