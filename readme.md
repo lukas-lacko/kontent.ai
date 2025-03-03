@@ -10,4 +10,7 @@
 
 [Find items by their element types](https://nestratsa.sk/temp/kontent/find_items_by_element_type/)
 
+[Calculate number of the assets within subscription or within environments](https://nestratsa.sk/temp/kontent/asset_calculator/)
+
+
 Feel free to download and use or edit them as you need.
