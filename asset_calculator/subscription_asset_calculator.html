@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Count assets in all projects</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+    .container {
+      max-width: 1200px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      text-align: center;
+      width: 100%;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    /* Subscription fields remain at 50% width */
+    input[type="text"] {
+      width: 50%;
+      max-width: 300px;
+      padding: 8px 15px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .api-key-container {
+      display: flex;
+      flex-direction: column;
+      width: auto; /* Ensures the container adapts to the input size */
+    }
+
+    .input-api-key {
+      width: 100%;  /* Make input take full width of its container */
+      max-width: none; /* Remove any previous max-width restrictions */
+      box-sizing: border-box; /* Prevent padding from affecting width */
+    }
+
+    button {
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .fetch-button {
+      background-color: #007bff;
+      color: #fff;
+    }
+    .fetch-button:hover {
+      background-color: #0056b3;
+    }
+    .find-key-button {
+      background-color: #e0e0e0;
+      color: #555;
+      border: 1px solid #ccc;
+      padding: 4px 8px; /* smaller button */
+      font-size: 0.8em;
+    }
+    .find-key-button:hover {
+      background-color: #d0d0d0;
+    }
+    /* Summary styling */
+    #project-summary {
+      margin: 10px 0;
+      text-align: left;
+      font-size: 1em;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+    }
+    #project-summary span {
+      margin-right: 15px;
+    }
+    #total-assets-in-subscription {
+      padding: 10px;
+      margin: 10px 0;
+      background-color: #e7f3fe;
+      border: 1px solid #b3d8ff;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .project-list {
+      margin-top: 20px;
+      text-align: left;
+    }
+    .project {
+      padding: 10px;
+      background-color: #f9f9f9;
+      margin: 10px 0;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: background-color 0.3s ease;
+    }
+    .highlight-green {
+      background-color: #d4edda;
+      border: 2px solid #28a745;
+    }
+    .highlight-red {
+      background-color: #f8d7da;
+      border: 2px solid #dc3545;
+      color: #721c24;
+    }
+    .highlight-orange {
+      background-color: #fff3cd;
+      border: 2px solid #ffc107;
+    }
+    .project-info {
+      width: 70%;
+    }
+    .environments {
+      padding-left: 20px;
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #555;
+    }
+    .api-key-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      width: 30%;
+      align-items: center;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    .input-api-key {
+      width: 100%;
+      padding: 8px 15px;
+      margin-top: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .assets-count {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .total-assets {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Count assets in all projects</h1>
+    <label for="subscriptionId">Enter Subscription ID:</label>
+    <input type="text" id="subscriptionId" placeholder="Subscription ID" autocomplete="off">
+    <label for="bearerToken">Enter Your Subscription API Key:</label>
+    <input type="text" id="bearerToken" placeholder="Subscription API Key" autocomplete="off">
+    <br>
+    <button id="fetchButton" class="fetch-button" onclick="fetchAllProjectData()">Fetch Projects</button>
+
+    <div id="project-summary">
+      <span id="neutral-summary"><span style="color: gray;">&#9679;</span> Not initiated: 0</span>
+      <span id="red-summary"><span style="color: red;">&#9679;</span> Error: 0</span>
+      <span id="orange-summary"><span style="color: orange;">&#9679;</span> Partialy fetched: 0</span>
+      <span id="green-summary"><span style="color: green;">&#9679;</span> Fetched: 0</span>
+    </div>
+    <div id="total-assets-in-subscription">
+      <strong> Assets in Subscription:</strong> 0
+    </div>
+    <div id="errorContainer" class="error"></div>
+    <div id="projectsContainer" class="project-list"></div>
+  </div>
+
+  <script>
+    const bearerTokenInput = document.getElementById('bearerToken');
+    const subscriptionIdInput = document.getElementById('subscriptionId');
+    const errorContainer = document.getElementById('errorContainer');
+    const projectsContainer = document.getElementById('projectsContainer');
+
+    let continuationToken = null;
+    let totalAssetsInSubscription = 0; // Global subscription asset count
+    const projectAssetsHistory = {}; // Stores last fetched asset count per project
+
+    // Update the project summary counts based on current project div classes
+    function updateProjectSummary() {
+      let neutral = 0, green = 0, red = 0, orange = 0;
+      const projects = document.querySelectorAll('.project');
+      projects.forEach(project => {
+        if(project.classList.contains('highlight-green')) {
+          green++;
+        } else if(project.classList.contains('highlight-red')) {
+          red++;
+        } else if(project.classList.contains('highlight-orange')) {
+          orange++;
+        } else {
+          neutral++;
+        }
+      });
+      document.getElementById('neutral-summary').innerHTML = `<span style="color: gray;">&#9679;</span> Not initiated: ${neutral}`;
+      document.getElementById('red-summary').innerHTML = `<span style="color: red;">&#9679;</span>Error: ${red}`;
+      document.getElementById('orange-summary').innerHTML = `<span style="color: orange;">&#9679;</span> Partialy fetched: ${orange}`;
+      document.getElementById('green-summary').innerHTML = `<span style="color: green;">&#9679;</span> Fetched: ${green}`;
+    }
+
+    // Function to count assets for an environment (with pagination)
+    function countAssetsForEnvironment(environmentId, bearerToken, environmentDiv, callback) {
+      let totalAssets = 0;
+      let environmentContinuationToken = null;
+      const apiUrl = `https://manage.kontent.ai/v2/projects/${environmentId}/assets`;
+
+      function fetchPageOfData() {
+        const headers = {
+          Authorization: `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        };
+        if (environmentContinuationToken) {
+          headers['x-continuation'] = environmentContinuationToken;
+        }
+        fetch(apiUrl, { method: 'GET', headers: headers })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            totalAssets += data.assets.length;
+            environmentContinuationToken = data.pagination?.continuation_token || null;
+            if (environmentContinuationToken) {
+              fetchPageOfData();
+            } else {
+              const assetsCountDiv = document.createElement('div');
+              assetsCountDiv.classList.add('assets-count');
+              assetsCountDiv.innerHTML = `Assets in this environment: ${totalAssets}`;
+              environmentDiv.appendChild(assetsCountDiv);
+              callback(totalAssets);
+              environmentDiv.classList.remove('highlight-red');
+              environmentDiv.classList.add('highlight-green');
+            }
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            environmentDiv.innerHTML += `<div class="error">Error: ${error.message}</div>`;
+            callback(0);
+            environmentDiv.classList.add('highlight-red');
+          });
+      }
+      fetchPageOfData();
+    }
+
+    // Function to fetch assets for a single project
+    function fetchAssetsForProject(projectId) {
+      const apiKeyInput = document.querySelector(`#project-${projectId} .input-api-key`);
+      const managementApiKey = apiKeyInput.value;
+      const projectDiv = document.getElementById(`project-${projectId}`);
+      const totalAssetsDiv = projectDiv.querySelector('.total-assets');
+      const totalAssetsInSubscriptionDiv = document.getElementById('total-assets-in-subscription');
+      const environments = projectDiv.querySelector('.environments').children;
+
+      if (managementApiKey) {
+        let totalAssets = 0;
+        let environmentsProcessed = 0;
+        let allGreen = true;
+        let allRed = true;
+
+        totalAssetsDiv.innerHTML = `<strong>Assets in Project:</strong> 0`;
+
+        // Reset each environment div using its stored data
+        Array.from(environments).forEach((envDiv) => {
+          envDiv.innerHTML = `<strong>Environment ID:</strong> ${envDiv.dataset.envId} <br>
+                              <strong>Environment Name:</strong> ${envDiv.dataset.envName}`;
+          envDiv.classList.remove('highlight-green', 'highlight-red', 'highlight-orange');
+        });
+
+        // Reset the project color.
+        projectDiv.classList.remove('highlight-green', 'highlight-red', 'highlight-orange');
+
+        Array.from(environments).forEach((envDiv) => {
+          const environmentId = envDiv.dataset.envId;
+          countAssetsForEnvironment(environmentId, managementApiKey, envDiv, (assetsCount) => {
+            totalAssets += assetsCount;
+            environmentsProcessed++;
+
+            if (assetsCount > 0) {
+              envDiv.classList.add('highlight-green');
+              envDiv.classList.remove('highlight-red');
+              allRed = false;
+            } else if (assetsCount === 0 && !envDiv.querySelector('.error')) {
+              envDiv.classList.remove('highlight-green', 'highlight-red');
+            } else {
+              envDiv.classList.add('highlight-red');
+              envDiv.classList.remove('highlight-green');
+              allGreen = false;
+            }
+
+            if (environmentsProcessed === environments.length) {
+              totalAssetsDiv.innerHTML = `<strong>Assets in Project:</strong> ${totalAssets}`;
+              let assetsDifference = totalAssets - (projectAssetsHistory[projectId] || 0);
+              totalAssetsInSubscription += assetsDifference;
+              projectAssetsHistory[projectId] = totalAssets;
+
+              projectDiv.classList.remove('highlight-green', 'highlight-red', 'highlight-orange');
+              if (allGreen) {
+                projectDiv.classList.add('highlight-green');
+              } else if (allRed) {
+                projectDiv.classList.add('highlight-red');
+              } else {
+                projectDiv.classList.add('highlight-orange');
+              }
+              totalAssetsInSubscriptionDiv.innerHTML = `<strong>Assets in Subscription:</strong> ${totalAssetsInSubscription}`;
+
+              // Update project summary counts
+              updateProjectSummary();
+            }
+          });
+        });
+      } else {
+        errorContainer.textContent = "Please enter a valid Management API Key.";
+      }
+    }
+
+    // Function to fetch and display projects and their environments
+    function fetchAllProjectData() {
+      const apiUrl = `https://manage.kontent.ai/v2/subscriptions/${subscriptionIdInput.value}/projects`;
+      const bearerToken = bearerTokenInput.value;
+      errorContainer.textContent = '';
+      projectsContainer.innerHTML = '';
+      continuationToken = null;
+
+      function fetchPageOfData() {
+        const url = `${apiUrl}?continuation_token=${continuationToken || ''}`;
+        const headers = {
+          Authorization: `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        };
+        fetch(url, { method: 'GET', headers: headers })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            continuationToken = data.pagination.continuation_token;
+            data.projects.forEach((project) => {
+              const projectDiv = document.createElement('div');
+              projectDiv.classList.add('project');
+              projectDiv.id = `project-${project.id}`;
+              projectDiv.innerHTML = `
+                <div class="api-key-container">
+                  <input type="text" class="input-api-key" placeholder="Enter Management API Key">
+                  <button class="fetch-button" onclick="fetchAssetsForProject('${project.id}')">Fetch number of assets</button>
+                  <button class="find-key-button" onclick="window.open('https://app.kontent.ai/projects/${project.id}/settings/api-keys/management','_blank')">Find Key In UI</button>
+                </div>
+                <div class="project-info">
+                  <strong>Project ID:</strong> ${project.id}<br>
+                  <strong>Project Name:</strong> ${project.name}
+                </div>
+                <div class="total-assets" id="total-assets-${project.id}">
+                  <strong> Assets in Project:</strong> 0
+                </div>
+              `;
+
+              if (project.environments && project.environments.length > 0) {
+                const envList = document.createElement('div');
+                envList.classList.add('environments');
+                project.environments.forEach((environment) => {
+                  const envDiv = document.createElement('div');
+                  envDiv.classList.add('environment');
+                  envDiv.dataset.envId = environment.id;
+                  envDiv.dataset.envName = environment.name;
+                  envDiv.innerHTML = `
+                    <strong>Environment ID:</strong> ${environment.id} <br>
+                    <strong>Environment Name:</strong> ${environment.name}
+                  `;
+                  envList.appendChild(envDiv);
+                });
+                projectDiv.appendChild(envList);
+              }
+              projectsContainer.appendChild(projectDiv);
+            });
+            updateProjectSummary();
+            if (continuationToken) {
+              fetchPageOfData();
+            }
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            errorContainer.textContent = `Error: ${error.message}`;
+          });
+      }
+      fetchPageOfData();
+    }
+  </script>
+</body>
+</html>
