@@ -12,5 +12,7 @@
 
 [Calculate number of the assets within subscription or within environments](https://nestratsa.sk/temp/kontent/asset_calculator/)
 
+[[Compare uploaded image with images in asset library](https://nestratsa.sk/temp/kontent/image_asset_comparer/)
+
 
 Feel free to download and use or edit them as you need.
