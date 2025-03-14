@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontent Lens - Compare Image with existing Assets</title>
+  <style>
+    body { 
+        font-family: 'Segoe UI', Arial, sans-serif; 
+        text-align: center; 
+        background-color: #f8f9fa;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Input containers */
+    .input-group {
+        margin: 15px 0;
+        padding: 10px;
+    }
+
+    /* Input fields */
+    input[type="text"], 
+    input[type="file"],
+    select {
+        padding: 8px 12px;
+        margin: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 300px;
+        transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+        outline: none;
+        border-color: #2196F3;
+        box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+    }
+
+    /* File input styling */
+    input[type="file"] {
+        background-color: white;
+        cursor: pointer;
+    }
+
+    /* Button styling */
+    button {
+        background-color: #2196F3;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+        margin: 10px;
+    }
+
+    button:hover {
+        background-color: #1976D2;
+    }
+
+    button:active {
+        transform: translateY(1px);
+    }
+
+    /* Labels */
+    label {
+        font-weight: 500;
+        margin-right: 10px;
+        color: #333;
+    }
+
+    /* Table styling */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        background-color: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
+
+    th, td { 
+        border: 1px solid #ddd; 
+        padding: 12px; 
+        text-align: left; 
+    }
+
+    th { 
+        background-color: #2196F3; 
+        color: white;
+        font-weight: 500;
+    }
+
+    /* Status messages */
+    #errorContainer { 
+        color: #d32f2f;
+        padding: 10px;
+        margin: 10px 0;
+        font-weight: 500;
+    }
+
+    #loadingMessage,
+    #progressInfo { 
+        color: #1976D2;
+        padding: 10px;
+        margin: 10px 0;
+        font-weight: 500;
+    }
+
+    /* Results styling */
+    .high-similarity {
+        background-color: #c8e6c9;
+    }
+    
+    .low-similarity {
+        background-color: #ffecb3;
+    }
+    
+    .high-similarity:hover {
+        background-color: #a5d6a7;
+    }
+    
+    .low-similarity:hover {
+        background-color: #ffe082;
+    }
+
+    /* Links */
+    a {
+        color: #1976D2;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    a:hover {
+        color: #2196F3;
+        text-decoration: underline;
+    }
+
+    /* Headers */
+    h1 { 
+        color: #1976D2;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    h3 {
+        color: #333;
+        margin: 15px 0;
+    }
+
+    p { 
+        margin-top: 5px; 
+        font-size: 14px;
+        color: #666;
+    }
+
+    #smallest { 
+        font-size: 12px;
+        color: #888;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+</head>
+<body>
+  <h1>Kontent Lens Advanced</h1>
+  <p>Compare an image with existing Assets in Kontent.ai</p>
+  <p id="smallest"> Works on cropped images as well, but can be slower than basic version. Using TensorFlow.js with MobileNet for image comparison.</p>
+  <div class="input-group">
+    <div style="display: flex; justify-content: center; gap: 20px;">
+        <div>
+            <label for="envId">Environment ID:</label>
+            <input type="text" id="envId" placeholder="Enter Environment ID">
+        </div>
+        <div>
+            <label for="bearerToken">Management API Key:</label>
+            <input type="text" id="bearerToken" placeholder="Enter MAPI Key">
+        </div>
+    </div>
+    <div>
+        <label for="imageSize">Compare using:</label>
+        <select id="imageSize">
+            <option value="original">Original Size</option>
+            <option value="100" selected>100x100 px</option>
+            <option value="200">200x200 px</option>
+            <option value="300">300x300 px</option>
+            <option value="400">400x400 px</option>
+            <option value="500">500x500 px</option>
+        </select>
+    </div>
+    <div>
+        <input type="file" id="upload" accept="image/*">
+        <button onclick="compareImages()">Compare</button>
+    </div>
+  </div>
+  <div id="errorContainer" style="color: red;"></div>
+  <div id="loadingMessage" style="display: none;">Processing...</div>
+  <div id="progressInfo" style="display: none;">
+    Processing: <span id="processedCount">0</span> / <span id="totalCount">0</span> assets
+  </div>
+  <div id="matchMessage" style="display: none;">
+    <h3>Matching assets found:</h3>
+  </div>
+  <div id="noMatchMessage" style="display: none;">
+    <h3>No matching assets found.</h3>
+  </div>
+  <table id="assetTable">
+    <thead>
+      <tr>
+        <th>File Name & Link to the UI</th>
+        <th>Size</th>
+        <th>Direct URL</th>
+        <th>Similarity</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    let model = null;
+    let assetUrls = [];
+    let originalUrls = [];
+    let assetIds = [];
+    let assetSizes = [];
+
+    async function fetchAssets() {
+      assetUrls = []; assetIds = []; assetSizes = []; originalUrls = [];
+      const envId = document.getElementById('envId').value;
+      const bearerToken = document.getElementById('bearerToken').value;
+      const imageSize = document.getElementById('imageSize').value;
+      const errorContainer = document.getElementById('errorContainer');
+      
+      errorContainer.textContent = '';
+      if (!envId || !bearerToken) {
+        errorContainer.textContent = 'Environment ID and API Key are required!';
+        throw new Error('Missing credentials');
+      }
+
+      const url = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
+      let continuationToken = null;
+
+      async function fetchPage() {
+        const headers = { Authorization: `Bearer ${bearerToken}`, 'Content-Type': 'application/json' };
+        if (continuationToken) headers['x-continuation'] = continuationToken;
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        continuationToken = data.pagination.continuation_token;
+        
+        data.assets.forEach(asset => {
+          if (asset.type.toLowerCase().startsWith('image/')) {
+            originalUrls.push(asset.url);
+            if (imageSize === 'original') {
+              assetUrls.push(asset.url);
+            } else {
+              assetUrls.push(`${asset.url}?w=${imageSize}&h=${imageSize}&fit=clip`);
+            }
+            assetIds.push(asset.id);
+            assetSizes.push(asset.size);
+          } else {
+            console.log(`Skipped non-image asset: ${asset.file_name} (${asset.type})`);
+          }
+        });
+        
+        if (continuationToken) await fetchPage();
+      }
+
+      await fetchPage();
+    }
+
+    async function getImageData(url) {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = url;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 8;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 8, 8);
+        return ctx.getImageData(0, 0, 8, 8).data;
+      } catch (error) {
+        throw new Error('Image loading failed');
+      }
+    }
+
+    function getHash(imageData) {
+      let grayscale = [];
+      for (let i = 0; i < imageData.length; i += 4)
+        grayscale.push((imageData[i] + imageData[i+1] + imageData[i+2]) / 3);
+      const avgGray = grayscale.reduce((a, b) => a + b) / grayscale.length;
+      return grayscale.map(p => (p > avgGray ? 1 : 0)).join('');
+    }
+
+    function hammingDistance(hash1, hash2) {
+      return [...hash1].reduce((sum, bit, i) => sum + (bit !== hash2[i]), 0);
+    }
+
+    function distanceToProbability(distance) {
+      if (distance === 0) return 100; // If distance is 0, it's a perfect match.
+      return Math.max(0, 100 - (distance * 5));
+    }
+
+    // Helper function to load images
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    // Function to load the AI model
+    async function loadModel() {
+      try {
+        if (!model) {
+          document.getElementById('loadingMessage').textContent = 'Loading AI model...';
+          model = await mobilenet.load({
+            version: 2,
+            alpha: 1.0
+          });
+          document.getElementById('loadingMessage').textContent = 'Model loaded!';
+        }
+        return model;
+      } catch (error) {
+        console.error('Error loading model:', error);
+        document.getElementById('errorContainer').textContent = 'Error loading AI model: ' + error.message;
+        throw error;
+      }
+    }
+
+    // Function to get image features
+    async function getImageFeatures(imageElement) {
+      if (!model) {
+        await loadModel();
+      }
+      try {
+        const features = await model.infer(imageElement, {
+          embedding: true
+        });
+        return features;
+      } catch (error) {
+        console.error('Error getting image features:', error);
+        throw error;
+      }
+    }
+
+    // Function to calculate similarity
+    function cosineSimilarity(tensor1, tensor2) {
+      try {
+        const a = tensor1.dataSync();
+        const b = tensor2.dataSync();
+        
+        let dotProduct = 0;
+        let normA = 0;
+        let normB = 0;
+        
+        for (let i = 0; i < a.length; i++) {
+          dotProduct += a[i] * b[i];
+          normA += a[i] * a[i];
+          normB += b[i] * b[i];
+        }
+        
+        if (normA === 0 || normB === 0) {
+          return 0;
+        }
+        
+        const similarity = dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        
+        tensor1.dispose();
+        tensor2.dispose();
+        
+        return similarity;
+      } catch (error) {
+        console.error('Error in similarity calculation:', error);
+        return 0;
+      }
+    }
+
+    async function compareImages() {
+      try {
+        // Reset previous results
+        console.clear();
+        document.getElementById('errorContainer').textContent = '';
+        document.getElementById('matchMessage').style.display = 'none';
+        document.getElementById('noMatchMessage').style.display = 'none';
+        const tbody = document.getElementById('assetTable').querySelector('tbody');
+        tbody.innerHTML = '';
+
+        const file = document.getElementById('upload').files[0];
+        if (!file) {
+          document.getElementById('errorContainer').textContent = 'Please upload an image!';
+          return;
+        }
+
+        document.getElementById('loadingMessage').style.display = 'block';
+
+        try {
+          await fetchAssets();
+        } catch (error) {
+          document.getElementById('errorContainer').textContent = error.message;
+          document.getElementById('loadingMessage').style.display = 'none';
+          return;
+        }
+
+        // Show progress info
+        const progressInfo = document.getElementById('progressInfo');
+        const processedCount = document.getElementById('processedCount');
+        const totalCount = document.getElementById('totalCount');
+        progressInfo.style.display = 'block';
+        processedCount.textContent = '0';
+        totalCount.textContent = assetUrls.length;
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          try {
+            // Get features of the uploaded image
+            const uploadedImg = await loadImage(e.target.result);
+            const uploadedFeatures = await getImageFeatures(uploadedImg);
+
+            const results = await Promise.all(assetUrls.map(async (url, index) => {
+              try {
+                const img = await loadImage(url);
+                const features = await getImageFeatures(img);
+                const similarity = cosineSimilarity(uploadedFeatures.clone(), features);
+                
+                // Update processed count
+                processedCount.textContent = (index + 1).toString();
+
+                return {
+                  index,
+                  url: originalUrls[index],
+                  similarity: similarity * 100, // Convert to percentage
+                  size: assetSizes[index]
+                };
+              } catch (error) {
+                console.error('Error processing image:', url, error);
+                processedCount.textContent = (index + 1).toString();
+                return {
+                  index,
+                  url: originalUrls[index],
+                  similarity: 0,
+                  size: assetSizes[index]
+                };
+              }
+            }));
+
+            // Sort by similarity
+            results.sort((a, b) => b.similarity - a.similarity);
+
+            // Log all results for debugging
+            console.log('All comparison results:', results);
+
+            // Filter results with more lenient similarity threshold (30% instead of 50%)
+            const filteredResults = results.filter(r => r.similarity > 30);
+            
+            if (filteredResults.length === 0) {
+                document.getElementById('noMatchMessage').style.display = 'block';
+                // Show top 5 closest matches even if below threshold
+                const topResults = results.slice(0, 5);
+                console.log('Top 5 closest matches:', topResults);
+                
+                const tbody = document.getElementById('assetTable').querySelector('tbody');
+                const envId = document.getElementById('envId').value;
+
+                tbody.innerHTML = topResults
+                    .map(r => {
+                        const assetName = r.url.split('/').pop();
+                        const assetUrl = `https://app.kontent.ai/${envId}/content-inventory/assets/asset/${assetIds[r.index]}`;
+                        return `<tr class="${r.similarity > 30 ? 'success' : 'error'}">
+                                <td><a href="${assetUrl}" target="_blank">${assetName}</a></td>
+                                <td>${r.size}</td>
+                                <td><a href="${r.url}" target="_blank">Link</a></td>
+                                <td>${r.similarity.toFixed(2)}%</td>
+                            </tr>`;
+                    }).join('');
+            } else {
+                const tbody = document.getElementById('assetTable').querySelector('tbody');
+                const envId = document.getElementById('envId').value;
+
+                tbody.innerHTML = filteredResults
+                    .map(r => {
+                        const assetName = r.url.split('/').pop();
+                        const assetUrl = `https://app.kontent.ai/${envId}/content-inventory/assets/asset/${assetIds[r.index]}`;
+                        // Add class based on similarity
+                        const rowClass = r.similarity >= 50 ? 'high-similarity' : 'low-similarity';
+                        return `<tr class="${rowClass}">
+                                <td><a href="${assetUrl}" target="_blank">${assetName}</a></td>
+                                <td>${r.size}</td>
+                                <td><a href="${r.url}" target="_blank">Link</a></td>
+                                <td>${r.similarity.toFixed(2)}%</td>
+                            </tr>`;
+                    }).join('');
+                document.getElementById('matchMessage').style.display = 'block';
+            }
+
+            // Cleanup tensors
+            uploadedFeatures.dispose();
+
+            // Hide progress info and loading message
+            progressInfo.style.display = 'none';
+            document.getElementById('loadingMessage').style.display = 'none';
+
+          } catch (error) {
+            console.error('Comparison error:', error);
+            document.getElementById('errorContainer').textContent = 'Error comparing images: ' + error.message;
+            document.getElementById('loadingMessage').style.display = 'none';
+            progressInfo.style.display = 'none';
+          }
+        };
+        reader.readAsDataURL(file);
+
+      } catch (error) {
+        console.error('General error:', error);
+        document.getElementById('errorContainer').textContent = 'Error: ' + error.message;
+        document.getElementById('loadingMessage').style.display = 'none';
+        progressInfo.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

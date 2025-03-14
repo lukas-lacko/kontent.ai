@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontent Lens - Compare Image with existing Assets</title>
+  <style>
+    body { 
+        font-family: 'Segoe UI', Arial, sans-serif; 
+        text-align: center; 
+        background-color: #f8f9fa;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Input containers */
+    .input-group {
+        margin: 15px 0;
+        padding: 10px;
+    }
+
+    /* Input fields */
+    input[type="text"], 
+    input[type="file"],
+    select {
+        padding: 8px 12px;
+        margin: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 300px;
+        transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+        outline: none;
+        border-color: #2196F3;
+        box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+    }
+
+    /* File input styling */
+    input[type="file"] {
+        background-color: white;
+        cursor: pointer;
+    }
+
+    /* Button styling */
+    button {
+        background-color: #2196F3;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+        margin: 10px;
+    }
+
+    button:hover {
+        background-color: #1976D2;
+    }
+
+    button:active {
+        transform: translateY(1px);
+    }
+
+    /* Labels */
+    label {
+        font-weight: 500;
+        margin-right: 10px;
+        color: #333;
+    }
+
+    /* Table styling */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        background-color: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
+
+    th, td { 
+        border: 1px solid #ddd; 
+        padding: 12px; 
+        text-align: left; 
+    }
+
+    th { 
+        background-color: #2196F3; 
+        color: white;
+        font-weight: 500;
+    }
+
+    /* Status messages */
+    #errorContainer { 
+        color: #d32f2f;
+        padding: 10px;
+        margin: 10px 0;
+        font-weight: 500;
+    }
+
+    #loadingMessage,
+    #progressInfo { 
+        color: #1976D2;
+        padding: 10px;
+        margin: 10px 0;
+        font-weight: 500;
+    }
+
+    /* Links */
+    a {
+        color: #1976D2;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    a:hover {
+        color: #2196F3;
+        text-decoration: underline;
+    }
+
+    /* Headers */
+    h1 { 
+        color: #1976D2;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    h3 {
+        color: #333;
+        margin: 15px 0;
+    }
+
+    p { 
+        margin-top: 5px; 
+        font-size: 14px;
+        color: #666;
+    }
+
+    #smallest { 
+        font-size: 12px;
+        color: #888;
+    }
+
+    /* Match messages */
+    #matchMessage,
+    #noMatchMessage {
+        margin: 15px 0;
+        padding: 10px;
+    }
+
+    /* Add these to your existing styles */
+    tr {
+        background-color: #c8e6c9; /* Light green - same as high-similarity in index2 */
+    }
+    
+    tr:hover {
+        background-color: #a5d6a7; /* Darker green on hover - same as index2 */
+    }
+  </style>
+</head>
+<body>
+  <h1>Kontent Lens Basic</h1>
+  <p>Compare an image with existing Assets in Kontent.ai</p>
+  <p id="smallest"> Works on resized but not on cropped images. Is faster than advanced version.</p>
+  <label>Environment ID:</label>
+  <input type="text" id="envId" placeholder="Enter Environment ID">
+  <label>Management API Key:</label>
+  <input type="text" id="bearerToken" placeholder="Enter MAPI Key">
+  <input type="file" id="upload" accept="image/*">
+  <button onclick="compareImages()">Compare Images</button>
+  <p id="smallest">Compares only with image asset type. Calls them with ?w=100&h=100&fit=clip parameter to consume less bandwith. </p>
+  <div id="errorContainer" style="color:red;"></div>
+  <h2 id="matchMessage" style="display:none;">Images with high probability of match</h2>
+  <h3 id="noMatchMessage" style="color: red; display:none;">No matching assets found</h3>
+  <div id="loadingMessage">Fetching assets, please wait...</div>
+  <div id="progressInfo" style="display: none;">
+    Processing: <span id="processedCount">0</span> / <span id="totalCount">0</span> assets
+  </div>
+  <table id="assetTable">
+    <thead>
+      <tr>
+        <th>File Name & Link to the UI</th>
+        <th>Size</th>
+        <th>Direct URL</th>
+        <th>Distance</th>
+        <th>Probability</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    let assetUrls = [], assetIds = [], assetSizes = [], originalUrls = [];
+
+    async function fetchAssets() {
+      assetUrls = []; assetIds = []; assetSizes = []; originalUrls = [];
+      const envId = document.getElementById('envId').value;
+      const bearerToken = document.getElementById('bearerToken').value;
+      const errorContainer = document.getElementById('errorContainer');
+      errorContainer.textContent = '';
+      if (!envId || !bearerToken) {
+        errorContainer.textContent = 'Environment ID and API Key are required!';
+        throw new Error('Missing credentials');
+      }
+      const url = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
+      let continuationToken = null;
+      async function fetchPage() {
+        const headers = { Authorization: `Bearer ${bearerToken}`, 'Content-Type': 'application/json' };
+        if (continuationToken) headers['x-continuation'] = continuationToken;
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        continuationToken = data.pagination.continuation_token;
+        data.assets.forEach(asset => {
+          // Only process image assets
+          if (asset.type.toLowerCase().startsWith('image/')) {
+            originalUrls.push(asset.url);
+            assetUrls.push(asset.url + '?w=100&h=100&fit=clip');
+            assetIds.push(asset.id);
+            assetSizes.push(asset.size);
+          } else {
+            console.log(`Skipped non-image asset: ${asset.file_name} (${asset.type})`);
+          }
+        });
+        if (continuationToken) await fetchPage();
+      }
+      await fetchPage();
+    }
+
+    async function getImageData(url) {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = url;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 8;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 8, 8);
+        return ctx.getImageData(0, 0, 8, 8).data;
+      } catch (error) {
+        throw new Error('Image loading failed');
+      }
+    }
+
+    function getHash(imageData) {
+      let grayscale = [];
+      for (let i = 0; i < imageData.length; i += 4)
+        grayscale.push((imageData[i] + imageData[i+1] + imageData[i+2]) / 3);
+      const avgGray = grayscale.reduce((a, b) => a + b) / grayscale.length;
+      return grayscale.map(p => (p > avgGray ? 1 : 0)).join('');
+    }
+
+    function hammingDistance(hash1, hash2) {
+      return [...hash1].reduce((sum, bit, i) => sum + (bit !== hash2[i]), 0);
+    }
+
+    function distanceToProbability(distance) {
+      if (distance === 0) return 100; // If distance is 0, it's a perfect match.
+      return Math.max(0, 100 - (distance * 5));
+    }
+
+    async function compareImages() {
+      // Reset previous results
+      console.clear(); // Clear console log
+      document.getElementById('errorContainer').textContent = '';
+      document.getElementById('matchMessage').style.display = 'none';
+      document.getElementById('noMatchMessage').style.display = 'none'; // Hide no match message
+
+      // Clear the asset table
+      const tbody = document.getElementById('assetTable').querySelector('tbody');
+      tbody.innerHTML = '';
+
+      const file = document.getElementById('upload').files[0];
+      if (!file) {
+        document.getElementById('errorContainer').textContent = 'Please upload an image!';
+        return;
+      }
+
+      // Show the "fetching" message
+      document.getElementById('loadingMessage').style.display = 'block';
+
+      try {
+        await fetchAssets();
+      } catch (error) {
+        document.getElementById('errorContainer').textContent = error.message;
+        document.getElementById('loadingMessage').style.display = 'none'; // Hide the "fetching" message
+        return;
+      }
+
+      // Show progress info and set total
+      const progressInfo = document.getElementById('progressInfo');
+      const processedCount = document.getElementById('processedCount');
+      const totalCount = document.getElementById('totalCount');
+      progressInfo.style.display = 'block';
+      processedCount.textContent = '0';
+      totalCount.textContent = assetUrls.length;
+
+      const reader = new FileReader();
+      reader.onload = async function (e) {
+        const img = new Image(); img.src = e.target.result;
+        await img.decode();
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 8;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, 8, 8);
+        const uploadedHash = getHash(ctx.getImageData(0, 0, 8, 8).data);
+
+        const results = await Promise.all(assetUrls.map(async (url, index) => {
+          try {
+            const assetHash = getHash(await getImageData(url));
+            const distance = hammingDistance(uploadedHash, assetHash);
+            const result = { 
+              index, 
+              url: originalUrls[index],
+              distance, 
+              probability: distanceToProbability(distance), 
+              size: assetSizes[index] 
+            };
+
+            // Update processed count
+            processedCount.textContent = (index + 1).toString();
+            
+            return result;
+          } catch {
+            // Update processed count even if there's an error
+            processedCount.textContent = (index + 1).toString();
+            return { 
+              index, 
+              url: originalUrls[index],
+              distance: null, 
+              probability: 'Error', 
+              size: assetSizes[index] 
+            };
+          }
+        }));
+
+        results.sort((a, b) => a.distance - b.distance);
+        console.table(results);
+
+        const filteredResults = results.filter(r => r.distance !== null && r.distance >= 0 && r.distance <= 10);
+        if (filteredResults.length === 0) {
+          document.getElementById('noMatchMessage').style.display = 'block'; // Show the no match message
+        } else {
+          const tbody = document.getElementById('assetTable').querySelector('tbody');
+          const envId = document.getElementById('envId').value; // Get envId here to ensure it's available
+
+          tbody.innerHTML = filteredResults
+            .map(r => {
+              const assetName = r.url.split('/').pop();
+              const assetUrl = `https://app.kontent.ai/${envId}/content-inventory/assets/asset/${assetIds[r.index]}`;
+              return `<tr class="high-similarity">
+                        <td><a href="${assetUrl}" target="_blank">${assetName}</a></td>
+                        <td>${r.size}</td>
+                        <td><a href="${r.url}" target="_blank">Link</a></td>
+                        <td>${r.distance}</td>
+                        <td>${r.probability}%</td>
+                      </tr>`;
+            }).join('');
+          document.getElementById('matchMessage').style.display = tbody.innerHTML ? 'block' : 'none';
+        }
+
+        // Hide the "fetching" message after the data is processed
+        document.getElementById('loadingMessage').style.display = 'none';
+
+        // Hide progress info when done
+        progressInfo.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>

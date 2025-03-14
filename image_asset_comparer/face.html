@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontent Lens - Face Matching</title>
+  <!-- Load face-api.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <style>
+    body { 
+        font-family: 'Segoe UI', Arial, sans-serif; 
+        text-align: center; 
+        background-color: #f8f9fa;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Input containers */
+    .input-group {
+        margin: 15px 0;
+        padding: 10px;
+    }
+
+    /* Input fields */
+    input[type="text"], 
+    input[type="file"],
+    select {
+        padding: 8px 12px;
+        margin: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 300px;
+        transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+        outline: none;
+        border-color: #2196F3;
+        box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+    }
+
+    /* File input styling */
+    input[type="file"] {
+        background-color: white;
+        cursor: pointer;
+    }
+
+    /* Button styling */
+    button {
+        background-color: #2196F3;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+        margin: 10px;
+    }
+
+    button:hover {
+        background-color: #1976D2;
+    }
+
+    button:active {
+        transform: translateY(1px);
+    }
+
+    /* Labels */
+    label {
+        font-weight: 500;
+        margin-right: 10px;
+        color: #333;
+    }
+
+    /* Table styling */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        background-color: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
+
+    th, td { 
+        border: 1px solid #ddd; 
+        padding: 12px; 
+        text-align: left; 
+    }
+
+    th { 
+        background-color: #2196F3; 
+        color: white;
+        font-weight: 500;
+    }
+
+    /* Status messages */
+    #errorContainer { 
+        color: #d32f2f;
+        padding: 10px;
+        margin: 10px 0;
+        font-weight: 500;
+    }
+
+    #loadingMessage,
+    #progressInfo { 
+        color: #1976D2;
+        padding: 10px;
+        margin: 10px 0;
+        font-weight: 500;
+    }
+
+    /* Links */
+    a {
+        color: #1976D2;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    a:hover {
+        color: #2196F3;
+        text-decoration: underline;
+    }
+
+    /* Headers */
+    h1 { 
+        color: #1976D2;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    h3 {
+        color: #333;
+        margin: 15px 0;
+    }
+
+    p { 
+        margin-top: 5px; 
+        font-size: 14px;
+        color: #666;
+    }
+
+    #smallest { 
+        font-size: 12px;
+        color: #888;
+    }
+
+    /* Match messages */
+    #matchMessage,
+    #noMatchMessage {
+        margin: 15px 0;
+        padding: 10px;
+    }
+
+    /* Add these to your existing styles */
+    tr {
+        background-color: #c8e6c9; /* Light green - same as high-similarity in index2 */
+    }
+    
+    tr:hover {
+        background-color: #a5d6a7; /* Darker green on hover - same as index2 */
+    }
+
+    /* Add new styles for face detection */
+    canvas {
+        display: none;
+    }
+    
+    .preview-container {
+        position: relative;
+        display: inline-block;
+        margin: 10px;
+        max-width: 300px;
+    }
+    
+    .preview-image {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .face-box {
+        position: absolute;
+        border: 2px solid #2196F3;
+        background-color: rgba(33, 150, 243, 0.2);
+    }
+
+    /* Add styles for face detection visualization */
+    #sourceImage, #targetImage {
+        max-width: 300px;
+        margin: 10px;
+    }
+    
+    .face-container {
+        position: relative;
+        display: inline-block;
+        margin: 10px;
+    }
+    
+    .preview-image {
+        max-width: 300px;
+        height: auto;
+    }
+    
+    .face-box {
+        position: absolute;
+        border: 2px solid #2196F3;
+        background-color: rgba(33, 150, 243, 0.2);
+    }
+
+    .similarity-score {
+        position: absolute;
+        top: -20px;
+        left: 0;
+        background: #2196F3;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+
+    #uploadedPreview {
+        margin: 20px;
+        padding: 10px;
+        border: 2px dashed #ccc;
+        display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kontent Lens Face Matching</h1>
+  <p>Compare faces in images with existing Assets in Kontent.ai</p>
+  <p id="smallest">Uses face recognition to find similar faces in your assets.</p>
+  
+  <div id="modelStatus">Loading face recognition models...</div>
+  
+  <label>Environment ID:</label>
+  <input type="text" id="envId" placeholder="Enter Environment ID">
+  <label>Management API Key:</label>
+  <input type="text" id="bearerToken" placeholder="Enter MAPI Key">
+  
+  <div id="uploadedPreview">
+      <h3>Uploaded Image</h3>
+      <input type="file" id="upload" accept="image/*" onchange="previewImage(this)">
+      <div id="previewContainer"></div>
+  </div>
+  
+  <button onclick="compareImages()" id="compareBtn" disabled>Find Similar Faces</button>
+  
+  <div id="errorContainer" style="color:red;"></div>
+  <h2 id="matchMessage" style="display:none;">Images with matching faces</h2>
+  <h3 id="noMatchMessage" style="color: red; display:none;">No matching faces found</h3>
+  <div id="loadingMessage" style="display:none;">Processing images...</div>
+  <div id="progressInfo" style="display: none;">
+      Processing: <span id="processedCount">0</span> / <span id="totalCount">0</span> assets
+  </div>
+  
+  <table id="assetTable">
+    <thead>
+      <tr>
+        <th>File Name & Link to the UI</th>
+        <th>Size</th>
+        <th>Direct URL</th>
+        <th>Match Score</th>
+        <th>Preview</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let assetUrls = [], assetIds = [], assetSizes = [], originalUrls = [];
+    let isModelsLoaded = false;
+    let uploadedImageDescriptor = null;
+
+    // Load face-api models
+    async function loadModels() {
+        try {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+            
+            document.getElementById('modelStatus').textContent = 'Loading detection model...';
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            
+            document.getElementById('modelStatus').textContent = 'Loading landmark model...';
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            
+            document.getElementById('modelStatus').textContent = 'Loading recognition model...';
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            
+            isModelsLoaded = true;
+            document.getElementById('modelStatus').textContent = 'Face recognition ready!';
+            document.getElementById('compareBtn').disabled = false;
+        } catch (error) {
+            console.error('Error loading models:', error);
+            document.getElementById('modelStatus').textContent = 'Error loading models: ' + error.message;
+        }
+    }
+
+    // Initialize when page loads
+    window.onload = loadModels;
+
+    // Preview uploaded image
+    async function previewImage(input) {
+        const previewContainer = document.getElementById('previewContainer');
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                previewContainer.innerHTML = `<img id="uploadedImage" src="${e.target.result}" style="max-width: 300px;">`;
+                // Pre-process the uploaded image
+                await processUploadedImage();
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Process uploaded image to get face descriptor
+    async function processUploadedImage() {
+        if (!isModelsLoaded) {
+            document.getElementById('errorContainer').textContent = 'Please wait for models to load';
+            return;
+        }
+
+        const img = document.getElementById('uploadedImage');
+        try {
+            const detection = await faceapi.detectSingleFace(img)
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+            
+            if (detection) {
+                uploadedImageDescriptor = detection.descriptor;
+                // Draw face box on preview
+                const canvas = faceapi.createCanvasFromMedia(img);
+                canvas.style.position = 'absolute';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+                img.parentElement.appendChild(canvas);
+                
+                const displaySize = { width: img.width, height: img.height };
+                faceapi.matchDimensions(canvas, displaySize);
+                
+                const resizedDetection = faceapi.resizeResults(detection, displaySize);
+                faceapi.draw.drawDetections(canvas, [resizedDetection]);
+            } else {
+                document.getElementById('errorContainer').textContent = 'No face detected in uploaded image';
+            }
+        } catch (error) {
+            console.error('Error processing uploaded image:', error);
+            document.getElementById('errorContainer').textContent = 'Error processing image';
+        }
+    }
+
+    // Fetch assets from Kontent.ai
+    async function fetchAssets() {
+      assetUrls = []; assetIds = []; assetSizes = []; originalUrls = [];
+      const envId = document.getElementById('envId').value;
+      const bearerToken = document.getElementById('bearerToken').value;
+      const errorContainer = document.getElementById('errorContainer');
+      errorContainer.textContent = '';
+      if (!envId || !bearerToken) {
+        errorContainer.textContent = 'Environment ID and API Key are required!';
+        throw new Error('Missing credentials');
+      }
+      const url = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
+      let continuationToken = null;
+      async function fetchPage() {
+        const headers = { Authorization: `Bearer ${bearerToken}`, 'Content-Type': 'application/json' };
+        if (continuationToken) headers['x-continuation'] = continuationToken;
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        continuationToken = data.pagination.continuation_token;
+        data.assets.forEach(asset => {
+          // Only process image assets
+          if (asset.type.toLowerCase().startsWith('image/')) {
+            originalUrls.push(asset.url);
+            assetUrls.push(asset.url);
+            assetIds.push(asset.id);
+            assetSizes.push(asset.size);
+          } else {
+            console.log(`Skipped non-image asset: ${asset.file_name} (${asset.type})`);
+          }
+        });
+        if (continuationToken) await fetchPage();
+      }
+      await fetchPage();
+    }
+
+    // Get face descriptor for an image URL
+    async function getFaceDescriptor(imageUrl) {
+        try {
+            const img = await faceapi.fetchImage(imageUrl);
+            const detection = await faceapi.detectSingleFace(img)
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+            return detection ? detection.descriptor : null;
+        } catch (error) {
+            console.error('Error getting face descriptor:', error);
+            return null;
+        }
+    }
+
+    // Calculate similarity between face descriptors
+    function getFaceSimilarity(descriptor1, descriptor2) {
+        return 1 - faceapi.euclideanDistance(descriptor1, descriptor2);
+    }
+
+    async function compareImages() {
+        if (!isModelsLoaded) {
+            document.getElementById('errorContainer').textContent = 'Please wait for models to load';
+            return;
+        }
+
+        if (!uploadedImageDescriptor) {
+            document.getElementById('errorContainer').textContent = 'Please upload an image with a face first';
+            return;
+        }
+
+        // Reset UI
+        document.getElementById('errorContainer').textContent = '';
+        document.getElementById('matchMessage').style.display = 'none';
+        document.getElementById('noMatchMessage').style.display = 'none';
+        document.getElementById('assetTable').querySelector('tbody').innerHTML = '';
+        document.getElementById('loadingMessage').style.display = 'block';
+
+        try {
+            await fetchAssets();
+        } catch (error) {
+            document.getElementById('errorContainer').textContent = error.message;
+            document.getElementById('loadingMessage').style.display = 'none';
+            return;
+        }
+
+        const progressInfo = document.getElementById('progressInfo');
+        const processedCount = document.getElementById('processedCount');
+        const totalCount = document.getElementById('totalCount');
+        progressInfo.style.display = 'block';
+        processedCount.textContent = '0';
+        totalCount.textContent = assetUrls.length;
+
+        const results = [];
+        for (let i = 0; i < assetUrls.length; i++) {
+            try {
+                const assetDescriptor = await getFaceDescriptor(assetUrls[i]);
+                processedCount.textContent = (i + 1).toString();
+
+                if (assetDescriptor) {
+                    const similarity = getFaceSimilarity(uploadedImageDescriptor, assetDescriptor);
+                    if (similarity > 0.5) { // Adjust this threshold as needed
+                        results.push({
+                            index: i,
+                            url: originalUrls[i],
+                            similarity: similarity,
+                            size: assetSizes[i]
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error processing image:', error);
+            }
+        }
+
+        results.sort((a, b) => b.similarity - a.similarity);
+
+        if (results.length === 0) {
+            document.getElementById('noMatchMessage').style.display = 'block';
+        } else {
+            const tbody = document.getElementById('assetTable').querySelector('tbody');
+            const envId = document.getElementById('envId').value;
+
+            tbody.innerHTML = results
+                .map(r => {
+                    const assetName = r.url.split('/').pop();
+                    const assetUrl = `https://app.kontent.ai/${envId}/content-inventory/assets/asset/${assetIds[r.index]}`;
+                    const similarityPercent = Math.round(r.similarity * 100);
+                    return `<tr class="high-similarity">
+                            <td><a href="${assetUrl}" target="_blank">${assetName}</a></td>
+                            <td>${r.size}</td>
+                            <td><a href="${r.url}" target="_blank">Link</a></td>
+                            <td>${similarityPercent}%</td>
+                            <td>
+                                <div class="face-container">
+                                    <div class="similarity-score">${similarityPercent}% Match</div>
+                                    <img src="${r.url}" class="preview-image" alt="Face preview">
+                                </div>
+                            </td>
+                        </tr>`;
+                }).join('');
+            document.getElementById('matchMessage').style.display = 'block';
+        }
+
+        document.getElementById('loadingMessage').style.display = 'none';
+        progressInfo.style.display = 'none';
+    }
+  </script>
+
+
+</body></html>
