@@ -8,50 +8,138 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .input-group {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
         }
 
-        input {
-            width: 300px;
-            margin-bottom: 10px;
+        input[type="text"] {
+            width: calc(100% - 50px);
+            padding: 10px 25px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            margin: 15px 0;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 8px;
         }
 
         button {
-            padding: 8px;
-            background-color: #4CAF50;
+            padding: 10px 20px;
+            background-color: #2196F3;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: #1976D2;
         }
 
-        #result {
+        .result-container {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-top: 20px;
         }
 
-        #languageResult {
+        .api-link {
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            word-break: break-all;
+        }
+
+        .preview-link {
+            color: #666;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #dee2e6;
+            word-break: break-all;
+        }
+
+        #result p, #languageResult p {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            background-color: #f8d7da;
+            border-radius: 4px;
             margin-top: 10px;
         }
 
-        #linkResult {
-            margin-top: 10px;
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
         }
 
-        #apiResponse {
-            margin-top: 10px;
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
         }
 
-        #authTokenInput {
-            display: none;
-            margin-top: 10px;
+        .subtitle {
+            color: #666;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+        }
+
+        .example-label {
+            font-size: 10px;
+            font-family: Arial, sans-serif;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .example-url {
+            display: block;
+            font-family: 'Courier New', monospace;
+            font-size: 8px;
+            background-color: #f5f5f5;
+            padding: 4px 4px;
+            border-radius: 4px;
+            color: #666;
+            margin: 0 auto;
+            max-width: 90%;
+            overflow-wrap: break-word;
+            border: 1px solid #dee2e6;
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/default.min.css">
@@ -59,36 +147,41 @@
     <script>hljs.initHighlightingOnLoad();</script>
 </head>
 <body>
-    <label for="urlInput">Enter URL:</label>
-    <input type="text" id="urlInput" placeholder="https://app.kontent.ai/..." autocomplete="off">
-    <label for="authToken">Enter Secured Access Token (optional):</label>
-    <input type="text" id="authToken" placeholder="Enter your token" autocomplete="off">
-    <br>
-    <button onclick="parseUrl()">Generate link</button>
+    <div class="header">
+        <h1>Kontent.ai UI link to Delivery API</h1>
+        <p class="subtitle">Checks Delivery API response</p>
+        <p class="description">Take the URL from your browser when viewing a content item in UI and paste it here to URL element.</p>
+        <p class="example-label">Example URL format:</p>
+        <code class="example-url">https://app.kontent.ai/b3e8c412-f7ad-53b2-ae9d-4c21d6e3f857/content-inventory/00000000-0000-0000-0000-000000000000/content/7d2a81f5-92c4-40ee-b7a3-1f9b22dc8e6b?origin=content-inventory</code>
+    </div>
 
-    
+    <div class="input-group">
+        <label for="urlInput">Enter URL:</label>
+        <input type="text" id="urlInput" placeholder="https://app.kontent.ai/..." autocomplete="off">
+        <label for="authToken" id="authTokenLabel">Enter API Key (optional):</label>
+        <input type="text" id="authToken" placeholder="Enter your API key (optional)" autocomplete="off">
+        <br>
+        <label>
+            <input type="checkbox" id="previewCheckbox" onchange="handlePreviewChange()"> Preview API
+        </label>
+        <br>
+        <button onclick="parseUrl()">Generate link</button>
+    </div>
 
+    <div id="errorContainer" class="error-container" style="display: none;"></div>
 
-
-
-
-    <div id="result"></div>
-
-    <div id="languageResult"></div>
-
-    <div id="linkResult"></div>
-
-    <div id="apiResponse"></div>
-
-   
+    <div class="result-container" style="display: none;">
+        <div id="result"></div>
+        <div id="languageResult"></div>
+        <div id="linkResult"></div>
+        <div id="apiResponse"></div>
+    </div>
 
     <script>
         let environmentID, languageID, itemID, codename, authToken; // Define constants outside functions
         
-
-
         function extractIdsFromUrl(url) {
-            const pattern = /https:\/\/app\.kontent\.ai\/([^\/]+)\/content-inventory\/([^\/]+)\/content\/([^\/]+)/;
+            const pattern = /https:\/\/app\.kontent\.ai\/([^\/]+)\/content-inventory\/([^\/]+)\/content\/([^?\s]+)/;
             const match = url.match(pattern);
 
             if (match) {
@@ -96,32 +189,46 @@
                 languageID = match[2];
                 itemID = match[3];
 
-            if (authToken === "") {
-                getLanguageCodename();
-            } else {
-                getLanguageCodenameWithToken();
-            }
+                // Determine which API flow to use based on Preview checkbox and API key presence
+                const previewChecked = document.getElementById('previewCheckbox').checked;
+                const hasAuthToken = authToken && authToken.trim() !== "";
 
-            return true;
-            
+                if (previewChecked) {
+                    // Case 1: Preview API (requires API key)
+                    getLanguageCodenameWithToken(true);
+                } else if (!previewChecked && hasAuthToken) {
+                    // Case 2: Delivery API with API key
+                    getLanguageCodenameWithToken(false);
+                } else {
+                    // Case 3: Delivery API without API key
+                    getLanguageCodename();
+                }
 
-
-                
+                return true;
             } else {
                 return false;
             }
         }
 
-           
-
         function parseUrl() {
+            // Reset previous API results but keep the error container
+            document.getElementById('languageResult').innerHTML = '';
+            document.getElementById('linkResult').innerHTML = '';
+            document.getElementById('apiResponse').innerHTML = '';
+            
+            // Show the result container when generating results
+            document.querySelector('.result-container').style.display = 'block';
+            
+            const previewChecked = document.getElementById('previewCheckbox').checked;
             authToken = document.getElementById('authToken').value;
+            
+            if (previewChecked && !authToken) {
+                showError('Access token is required when using Preview API');
+                return;
+            }
+
             const urlInput = document.getElementById('urlInput').value;
             const resultContainer = document.getElementById('result');
-            
-            const apiResponseContainer = document.getElementById('apiResponse');
-            apiResponseContainer.innerHTML = `<p></p>`;
-
 
             if (extractIdsFromUrl(urlInput)) {
                 resultContainer.innerHTML = `
@@ -130,51 +237,57 @@
                     <p><strong>Item ID:</strong> ${itemID}</p>
                 `;
             } else {
-                resultContainer.innerHTML = `<p style="color: red;">Invalid URL format</p>`;
+                showError('Invalid URL format');
             }
         }
 
-        function getLanguageCodenameWithToken() {
-            let authToken = document.getElementById('authToken').value;
+        function getLanguageCodenameWithToken(isPreview) {
+            const baseUrl = isPreview ? 'https://preview-deliver.kontent.ai' : 'https://deliver.kontent.ai';
             const languageResultContainer = document.getElementById('languageResult');
 
-            // Fetch language information from Kontent API
-
-            fetch(`https://deliver.kontent.ai/${environmentID}/languages`, {
+            fetch(`${baseUrl}/${environmentID}/languages`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`
                 }
             })
             .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else if (response.status === 401) {
-                        languageResultContainer.innerHTML = `<p style="color: red;">Authentication required (401 Unauthorized)</p>`;
-                        throw new Error('Authentication required');
-                    } else {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                })
-                .then(data => {
-                    const language = data.languages.find(lang => lang.system.id === languageID);
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 401) {
+                    languageResultContainer.innerHTML = `<p style="color: red;">Authentication required (401 Unauthorized)</p>`;
+                    throw new Error('Authentication required');
+                } else {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+            })
+            .then(data => {
+                const language = data.languages.find(lang => lang.system.id === languageID);
 
-                    if (language) {
-                        codename = language.system.codename;
-                        languageResultContainer.innerHTML = `<p><strong>Language Codename:</strong> ${codename}</p>`;
-                        generateClickableLinkWithToken();
-                    } else {
-                        languageResultContainer.innerHTML = `<p style="color: red;">Language not found</p>`;
-                    }
-                })
-                .catch(error => {
-                    if (error.message === 'Authentication required') {
-                    } else {
-                        languageResultContainer.innerHTML += `<p style="color: red;">Error fetching language information: ${error.message}</p>`;
-                    }
-                });
+                if (language) {
+                    codename = language.system.codename;
+                    languageResultContainer.innerHTML = `<p><strong>Language Codename:</strong> ${codename}</p>`;
+                    generateClickableLinkWithToken(isPreview);
+                } else {
+                    languageResultContainer.innerHTML = `<p style="color: red;">Language not found</p>`;
+                }
+            })
+            .catch(error => {
+                if (error.message === 'Authentication required') {
+                    // Already handled above
+                } else {
+                    languageResultContainer.innerHTML += `<p style="color: red;">Error fetching language information: ${error.message}</p>`;
+                }
+            });
         }
 
         function getLanguageCodename() {
+            const previewChecked = document.getElementById('previewCheckbox').checked;
+            if (previewChecked) {
+                // If preview is checked, we should use authenticated call instead
+                getLanguageCodenameWithToken(true);
+                return;
+            }
+
             const languageResultContainer = document.getElementById('languageResult');
 
             // Fetch language information from Kontent API
@@ -210,89 +323,133 @@
 
         function generateClickableLink() {
             const linkResultContainer = document.getElementById('linkResult');
+            const previewChecked = document.getElementById('previewCheckbox').checked;
+            const baseUrl = previewChecked ? 'https://preview-deliver.kontent.ai' : 'https://deliver.kontent.ai';
+            const apiLink = `${baseUrl}/${environmentID}/items?system.id=${itemID}&language=${codename}`;
 
-            // Generate clickable link
-            const clickableLink = `https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`;
-            linkResultContainer.innerHTML = `
-                <p><strong>Clickable Link:</strong> <a href="${clickableLink}" target="_blank">${clickableLink}</a></p>`;
-            fetchApiResponse();
+            if (previewChecked) {
+                linkResultContainer.innerHTML = `
+                    <p><strong>Preview Delivery API link:</strong></p>
+                    <div class="preview-link">${apiLink}</div>`;
+            } else {
+                linkResultContainer.innerHTML = `
+                    <p><strong>Delivery API link:</strong></p>
+                    <div class="api-link"><a href="${apiLink}" target="_blank">${apiLink}</a></div>`;
+            }
+            
+            if (previewChecked) {
+                fetchAuthenticatedApiResponse(true);
+            } else {
+                fetchApiResponse();
+            }
         }
 
-        function generateClickableLinkWithToken() {
+        function generateClickableLinkWithToken(isPreview) {
             const linkResultContainer = document.getElementById('linkResult');
+            const baseUrl = isPreview ? 'https://preview-deliver.kontent.ai' : 'https://deliver.kontent.ai';
+            const apiLink = `${baseUrl}/${environmentID}/items?system.id=${itemID}&language=${codename}`;
 
-            // Generate clickable link
-            const clickableLink = `https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`;
-            linkResultContainer.innerHTML = `
-                <p><strong>Clickable Link:</strong> <a href="${clickableLink}" target="_blank">${clickableLink}</a></p>`;
-            fetchAuthenticatedApiResponse();
-
-        }
-
-    function fetchApiResponse() {
-    const apiResponseContainer = document.getElementById('apiResponse');
-    apiResponseContainer.innerHTML = `<p><strong>Authenticated API Response:</strong></p>`;
-
-    // Fetch data from the clickable link
-    fetch(`https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`, {
-        headers: {
-            'X-KC-Wait-For-Loading-New-Content':'true'
-        }
-    })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
+            if (isPreview || authToken) {
+                // Non-clickable link for both Preview API and authenticated Delivery API
+                linkResultContainer.innerHTML = `
+                    <p><strong>${isPreview ? 'Preview Delivery API link' : 'Delivery API link'}:</strong></p>
+                    <div class="preview-link">${apiLink}</div>`;
             } else {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                // Clickable link only for public Delivery API
+                linkResultContainer.innerHTML = `
+                    <p><strong>Delivery API link:</strong></p>
+                    <div class="api-link"><a href="${apiLink}" target="_blank">${apiLink}</a></div>`;
             }
-        })
-        .then(data => {
-            const prettifiedJson = JSON.stringify(data, null, 2); // Use 2 spaces for indentation
-            apiResponseContainer.innerHTML = `
-                <p><strong>API Response:</strong></p>
-                <pre><code class="json">${prettifiedJson}</code></pre>
-            `;
-            hljs.highlightBlock(apiResponseContainer.querySelector('code')); // Highlight the code block
-        })
-        .catch(error => {
-            if (error.message === 'Authentication required') {
-            } else {
+            
+            fetchAuthenticatedApiResponse(isPreview);
+        }
+
+        function fetchApiResponse() {
+            const apiResponseContainer = document.getElementById('apiResponse');
+            const previewChecked = document.getElementById('previewCheckbox').checked;
+            
+            if (previewChecked) {
+                // If preview is checked, we should use authenticated call instead
+                fetchAuthenticatedApiResponse(true);
+                return;
+            }
+
+            apiResponseContainer.innerHTML = `<p><strong>Authenticated API Response:</strong></p>`;
+
+            // Fetch data from the clickable link
+            fetch(`https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`, {
+                headers: {
+                    'X-KC-Wait-For-Loading-New-Content':'true'
+                }
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    const prettifiedJson = JSON.stringify(data, null, 2); // Use 2 spaces for indentation
+                    apiResponseContainer.innerHTML = `
+                        <p><strong>API Response:</strong></p>
+                        <pre><code class="json">${prettifiedJson}</code></pre>
+                    `;
+                    hljs.highlightBlock(apiResponseContainer.querySelector('code')); // Highlight the code block
+                })
+                .catch(error => {
+                    if (error.message === 'Authentication required') {
+                    } else {
+                        apiResponseContainer.innerHTML += `<p style="color: red;">Error fetching API response: ${error.message}</p>`;
+                    }
+                });
+        }
+
+        function fetchAuthenticatedApiResponse(isPreview) {
+            const apiResponseContainer = document.getElementById('apiResponse');
+            const baseUrl = isPreview ? 'https://preview-deliver.kontent.ai' : 'https://deliver.kontent.ai';
+
+            fetch(`${baseUrl}/${environmentID}/items?system.id=${itemID}&language=${codename}`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'X-KC-Wait-For-Loading-New-Content': 'true'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+            })
+            .then(data => {
+                const prettifiedJson = JSON.stringify(data, null, 2);
+                apiResponseContainer.innerHTML = `
+                    <p><strong>API Response:</strong></p>
+                    <pre><code class="json">${prettifiedJson}</code></pre>
+                `;
+                hljs.highlightBlock(apiResponseContainer.querySelector('code'));
+            })
+            .catch(error => {
                 apiResponseContainer.innerHTML += `<p style="color: red;">Error fetching API response: ${error.message}</p>`;
-            }
-        });
-}
-
-        function fetchAuthenticatedApiResponse() {
-    const apiResponseContainer = document.getElementById('apiResponse');
-    authToken = document.getElementById('authToken').value;
-
-    // Fetch data from the clickable link with authentication
-    fetch(`https://deliver.kontent.ai/${environmentID}/items?system.id=${itemID}&language=${codename}`, {
-        headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'X-KC-Wait-For-Loading-New-Content':'true'
+            });
         }
-    })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            } else {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-        })
-        .then(data => {
-            const prettifiedJson = JSON.stringify(data, null, 2); // Use 2 spaces for indentation
-            apiResponseContainer.innerHTML = `
-                <p><strong>Authenticated API Response:</strong></p>
-                <pre><code class="json">${prettifiedJson}</code></pre>
-            `;
-            hljs.highlightBlock(apiResponseContainer.querySelector('code')); // Highlight the code block
-        })
-        .catch(error => {
-            apiResponseContainer.innerHTML += `<p style="color: red;">Error fetching authenticated API response: ${error.message}</p>`;
-        });
-    }
 
+        function handlePreviewChange() {
+            const previewChecked = document.getElementById('previewCheckbox').checked;
+            const authTokenInput = document.getElementById('authToken');
+            const authTokenLabel = document.getElementById('authTokenLabel');
+            
+            if (previewChecked) {
+                authTokenInput.required = true;
+                authTokenInput.placeholder = "Enter your API key (required for Preview)";
+                authTokenLabel.textContent = "Enter API Key (required for Preview):";
+            } else {
+                authTokenInput.required = false;
+                authTokenInput.placeholder = "Enter your API key (optional)";
+                authTokenLabel.textContent = "Enter API Key (optional):";
+            }
+        }
     </script>
 </body>
 </html>
