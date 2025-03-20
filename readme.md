@@ -14,5 +14,7 @@
 
 [Compare uploaded image with images in asset library](https://nestratsa.sk/temp/kontent/image_asset_comparer/)
 
+[Search items by string] (https://nestratsa.sk/temp/kontent/search/)
+
 
 Feel free to download and use or edit them as you need.
