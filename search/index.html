@@ -1,0 +1,289 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontent.ai - Search Items by String</title>
+<style>body { 
+  font-family: Arial, sans-serif; 
+  margin: 0; 
+  padding: 20px; 
+  background-color: #f4f4f4; 
+  color: #333;
+}
+
+h1 { 
+  text-align: center; 
+  color: #333; 
+  margin-bottom: 30px;
+}
+
+label { 
+  display: block; 
+  margin-bottom: 5px; 
+  color: #333; 
+  font-weight: bold;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto;
+  margin-right: 15px; /* Spacing between buttons */
+  margin-bottom: 15px; /* Adds space below buttons */
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover { 
+  background-color: #0056b3; 
+}
+
+input[type="text"], select {
+  width: 100%; 
+  max-width: 300px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+select {
+  padding: 8px;
+}
+
+.button-container {
+  display: flex; 
+  gap: 15px; /* Adds spacing between buttons */
+  flex-wrap: wrap; 
+  justify-content: flex-start;
+  margin-bottom: 20px;
+}
+
+#output {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 16px;
+}
+
+#output a {
+  display: inline-block; 
+  padding: 10px;
+  background-color: #007bff;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  max-width: 200px;
+  text-align: center;
+  white-space: nowrap;
+  margin-right: 10px;
+  transition: background-color 0.3s ease;
+}
+
+#output a:hover {
+  background-color: #0056b3;
+}
+
+.error { 
+  color: red; 
+  font-weight: bold; 
+  margin-bottom: 15px;
+}
+
+select, input[type="text"] {
+  font-size: 16px;
+}
+
+</style>
+</head>
+<body>
+  <h1>Kontent.ai - Search Items by String</h1>
+  
+  <div id="errorMessage" class="error" style="display: none;"></div>
+  <div id="fetchStatus" style="display: none; font-weight: bold;">Fetching...</div>
+
+  <label for="environmentId">Enter Environment ID:</label>
+  <input type="text" id="environmentId" placeholder="Your Environment ID"><br><br>
+
+  <label for="previewApiKey">Enter Preview API Key (optional):</label>
+  <input type="text" id="previewApiKey" placeholder="Your Preview API Key"><br><br>
+  
+  <label for="searchString">Enter Search String:</label>
+  <input type="text" id="searchString" placeholder="Text to search for"><br><br>
+  
+  <div class="button-container">
+    <button onclick="fetchData()">Search</button>
+    <button id="fetchLanguagesBtn" onclick="fetchLanguages()">Fetch Languages (optional)</button>
+    <select id="language" style="display: none;">
+        <option value="">All Languages</option>
+    </select><br><br>
+</div>
+
+
+
+  
+  <div id="output" style="display: none;"></div>
+
+  <script>
+    let languageIdMap = {}; // Map to store language codename -> id
+
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    function setFetchingStatus(show) {
+      document.getElementById('fetchStatus').style.display = show ? 'block' : 'none';
+    }
+
+    function fetchData() {
+      hideError();
+      setFetchingStatus(true);
+      document.getElementById('output').innerHTML = '';
+
+      const environmentId = document.getElementById('environmentId').value;
+      const previewApiKey = document.getElementById('previewApiKey').value;
+      const searchString = document.getElementById('searchString').value.toLowerCase();
+      const selectedLanguage = document.getElementById('language').value;
+      
+      if (!environmentId) {
+        showError("Environment ID is required.");
+        setFetchingStatus(false);
+        return;
+      }
+      if (!searchString) {
+        showError("Please enter a search string.");
+        setFetchingStatus(false);
+        return;
+      }
+      
+      const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+      const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+      
+      function fetchForLanguage(language) {
+        let url = `${baseUrl}/${environmentId}/items?limit=1000`;
+        if (language) {
+          url += `&language=${language}&system.language=${language}`;
+        }
+
+        let matchingItems = [];
+
+        function fetchNextPage(nextUrl) {
+          fetch(nextUrl, { headers })
+            .then(response => {
+              if (!response.ok) throw new Error('Error fetching content items.');
+              return response.json();
+            })
+            .then(data => {
+              data.items.forEach(item => {
+                for (const key in item.elements) {
+                  if (item.elements[key].value && item.elements[key].value.toString().toLowerCase().includes(searchString)) {
+                    matchingItems.push({
+                      codename: item.system.codename,
+                      id: item.system.id,
+                      languageId: languageIdMap[item.system.language] || null, // Use the mapped language ID
+                    });
+                    break;
+                  }
+                }
+              });
+              if (data.pagination && data.pagination.next_page) {
+                fetchNextPage(data.pagination.next_page);
+              } else {
+                displayResults(matchingItems, language);
+              }
+            })
+            .catch(error => {
+              showError("An error occurred while fetching items.");
+              console.error(error);
+            });
+        }
+        fetchNextPage(url);
+      }
+
+      if (selectedLanguage) {
+        fetchForLanguage(selectedLanguage);
+      } else {
+        fetchLanguages().then(languages => {
+          languages.forEach(lang => fetchForLanguage(lang.codename));
+        });
+      }
+    }
+
+    function displayResults(matchingItems, language) {
+      setFetchingStatus(false);
+      const output = document.getElementById('output');
+      output.style.display = 'block';
+      let resultHtml = `<p><b>Language (${language || 'All'}):</b></p>`;
+      matchingItems.forEach(item => {
+        // Now using the languageId to generate the URL
+        const itemUrl = `https://app.kontent.ai/${document.getElementById('environmentId').value}/content-inventory/${item.languageId}/content/${item.id}`;
+        resultHtml += `<a href="${itemUrl}" target="_blank">${item.codename}</a>`;
+      });
+      output.innerHTML += resultHtml;
+    }
+
+    function fetchLanguages() {
+      return new Promise((resolve, reject) => {
+        const environmentId = document.getElementById('environmentId').value;
+        const previewApiKey = document.getElementById('previewApiKey').value;
+
+        if (!environmentId) {
+          showError("Environment ID is required to fetch languages.");
+          return reject();
+        }
+
+        const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+        const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+
+        fetch(`${baseUrl}/${environmentId}/languages`, { headers })
+          .then(response => {
+            if (!response.ok) throw new Error('Error fetching languages.');
+            return response.json();
+          })
+          .then(data => {
+            const languageSelector = document.getElementById('language');
+            languageSelector.innerHTML = '<option value="">All Languages</option>';
+            let languageList = [];
+            data.languages.forEach(lang => {
+              languageList.push({
+                codename: lang.system.codename,
+                id: lang.system.id, // Storing the id here
+              });
+              languageIdMap[lang.system.codename] = lang.system.id; // Map codename to id
+              const option = document.createElement('option');
+              option.value = lang.system.codename;
+              option.textContent = lang.system.codename;
+              languageSelector.appendChild(option);
+            });
+            document.getElementById('fetchLanguagesBtn').style.display = 'none';
+            languageSelector.style.display = 'inline-block';
+            resolve(languageList);
+          })
+          .catch(error => {
+            showError("An error occurred while fetching languages.");
+            reject(error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
