@@ -16,5 +16,7 @@
 
 [Search items by string](https://nestratsa.sk/temp/kontent/search/)
 
+[Items calcualor](https://nestratsa.sk/temp/kontent/total_items/)
+
 
 Feel free to download and use or edit them as you need.
