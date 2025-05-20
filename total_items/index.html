@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count content items in Kontent.ai</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f7;
+            text-align: center;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            max-width: 450px;
+            width: 100%;
+        }
+        h2 {
+            color: #222;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            width: 90%;
+            max-width: 400px;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus, select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        p {
+            font-size: 18px;
+            margin-top: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Count content items in Kontent.ai</h2>
+        <label for="envId">Environment ID:</label>
+        <input type="text" id="envId" required placeholder="Enter Environment ID">
+        
+        <label for="previewKey">API Key (Optional, required for Preview API):</label>
+        <input type="text" id="previewKey" placeholder="Enter API Key">
+        
+        <div class="checkbox-container">
+            <input type="checkbox" id="previewMode">
+            <label for="previewMode">Use Preview API</label>
+        </div>
+        
+        <button onclick="fetchTotalCount()">Count</button>
+        <button onclick="fetchLanguages()">Fetch Languages</button>
+        <select id="languageSelect" style="display: none;"></select>
+        <p id="result"></p>
+    </div>
+
+    <script>
+       async function fetchTotalCount() {
+    const envId = document.getElementById('envId').value.trim();
+    const previewKey = document.getElementById('previewKey').value.trim();
+    const previewMode = document.getElementById('previewMode').checked;
+    const languageSelect = document.getElementById('languageSelect');
+    const selectedLanguage = languageSelect.value;
+    const resultElement = document.getElementById('result');
+
+    if (!envId) {
+        resultElement.textContent = 'Environment ID is required';
+        return;
+    }
+    if (previewMode && !previewKey) {
+        resultElement.textContent = 'API Key is required for preview mode';
+        return;
+    }
+
+    let baseUrl = previewMode ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+    let headers = previewKey ? { 'Authorization': `Bearer ${previewKey}` } : {};
+
+    let languageCodes = selectedLanguage ? [selectedLanguage] : await fetchLanguages(true);
+    resultElement.innerHTML = "Fetching data...";
+
+    let results = [];
+    for (const language of languageCodes) {
+        let url = `${baseUrl}/${envId}/items?limit=1&includeTotalCount=true&system.language=${language}&language=${language}`;
+        try {
+            const response = await fetch(url, { headers });
+            let data;
+            
+            try {
+                data = await response.json(); // Try to parse JSON
+            } catch {
+                throw new Error(`Error ${response.status}: Invalid JSON response from server`);
+            }
+
+            if (!response.ok) {
+                let errorMsg = `Error ${data.error_code || response.status}: ${data.message || response.statusText}`;
+                throw new Error(errorMsg);
+            }
+
+            results.push(`${language}: ${data.pagination.total_count}`);
+        } catch (error) {
+            results.push(`${language}: ${error.message}`);
+        }
+    }
+    resultElement.innerHTML = results.join('<br>');
+}
+
+
+
+
+async function fetchLanguages(justReturnList = false) {
+    const envId = document.getElementById('envId').value.trim();
+    const previewKey = document.getElementById('previewKey').value.trim();
+    const previewMode = document.getElementById('previewMode').checked;
+    const languageSelect = document.getElementById('languageSelect');
+
+    if (!envId) {
+        alert('Environment ID is required');
+        return [];
+    }
+
+    let baseUrl = previewMode ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+    let headers = previewKey ? { 'Authorization': `Bearer ${previewKey}` } : {};
+    let url = `${baseUrl}/${envId}/languages`;
+
+    try {
+        const response = await fetch(url, { headers });
+        let data;
+
+        try {
+            data = await response.json(); // Try to parse JSON
+        } catch {
+            throw new Error(`Error ${response.status}: Invalid JSON response from server`);
+        }
+
+        if (!response.ok) {
+            let errorMsg = `Error ${data.error_code || response.status}: ${data.message || response.statusText}`;
+            throw new Error(errorMsg);
+        }
+
+        let languageCodes = data.languages.map(lang => lang.system.codename);
+
+        if (justReturnList) return languageCodes;
+
+        // Populate dropdown
+        languageSelect.innerHTML = '<option value="">All Languages</option>';
+        languageCodes.forEach(lang => {
+            let option = document.createElement('option');
+            option.value = lang;
+            option.textContent = lang;
+            languageSelect.appendChild(option);
+        });
+        languageSelect.style.display = 'inline-block';
+        return languageCodes;
+    } catch (error) {
+        alert(`Failed to fetch languages: ${error.message}`);
+        return [];
+    }
+}
+
+    </script>
+</body>
+</html>
