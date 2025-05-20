@@ -3,130 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kontent.ai Related Mini Apps</title>
+    <title>Count content items in Kontent.ai</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #eef2f7;
             text-align: center;
-            margin: 40px;
-            background-color: #f9f9f9;
-        }
-        h1 {
-            font-size: 22px; /* Reduced from default size */
-            margin: 10px 0; /* Less top and bottom spacing */
-        }
-        .description, .github-link {
-            color: #444;
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-        a {
-            text-decoration: none;
-            color: #007BFF;
-            font-weight: 500;
-        }
-        a:hover {
-            text-decoration: underline;
-            color: #0056b3;
+            padding: 40px;
         }
         .container {
-            max-width: 700px;
-            margin: 0 auto;
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: left;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            max-width: 450px;
+            width: 100%;
         }
-        .section {
-            margin-top: 20px;
-        }
-        .section-title {
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 10px;
+        h2 {
             color: #222;
+            font-size: 28px;
+            margin-bottom: 20px;
         }
-        .link-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        input, select, button {
+            width: 90%;
+            max-width: 400px;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
         }
-        .link-item {
+        input:focus, select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .checkbox-container {
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        p {
+            font-size: 18px;
+            margin-top: 20px;
+            color: #333;
         }
     </style>
 </head>
 <body>
-    <h1>Kontent.ai Helper Tools</h1>
-    <p class="description">Unofficial tools for working with Kontent.ai</p>
-    <p class="github-link"><a href="https://github.com/lukas-lacko/kontent.ai/" target="_blank">GitHub Repository</a></p>
-
     <div class="container">
-        <div class="section">
-            <p class="section-title">User & Asset Data Management</p>
-            <div class="link-list">
-                <div class="link-item">
-                    <a href="./subscription_user_export" target="_blank">Subscription User Export</a> - Exports user data using the Subscription API.
-                </div>
-                <div class="link-item">
-                    <a href="./export_asset_info" target="_blank">Export Asset Info</a> - Extracts basic asset information using the Management API.
-                </div>
-                <div class="link-item">
-                    <a href="./asset_calculator/" target="_blank">Asset Calculator</a> - Counts assets in a subscription or environment.
-                </div>
-            </div>
+        <h2>Count content items in Kontent.ai</h2>
+        <label for="envId">Environment ID:</label>
+        <input type="text" id="envId" required placeholder="Enter Environment ID">
+        
+        <label for="previewKey">API Key (Optional, required for Preview API):</label>
+        <input type="text" id="previewKey" placeholder="Enter API Key">
+        
+        <div class="checkbox-container">
+            <input type="checkbox" id="previewMode">
+            <label for="previewMode">Use Preview API</label>
         </div>
-
-        <div class="section">
-            <p class="section-title">Item & Asset Discovery</p>
-            <div class="link-list">
-                <div class="link-item">
-                    <a href="./find_items_by_element_type" target="_blank">Find Items</a> - Finds items based on their element types.
-                </div>
-                <div class="link-item">
-                    <a href="./search/" target="_blank">Search</a> - Searches for items based on a string in their elements.
-                </div>
-                <div class="link-item">
-                    <a href="./image_asset_comparer/" target="_blank">Kontent Lens</a> - Compares all image assets against an uploaded image.
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <p class="section-title">API & UI Linking</p>
-            <div class="link-list">
-                <div class="link-item">
-                    <a href="./codename_to_ui" target="_blank">Link to the UI from the Codename</a> - Generates a UI link from a given codename.
-                </div>
-                <div class="link-item">
-                    <a href="./ui_link_to_dapi" target="_blank">UI Link to Delivery API</a> - Retrieves a Delivery API response from a UI content item link.
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <p class="section-title">Custom Elements & Webhooks</p>
-            <div class="link-list">
-                <div class="link-item">
-                    <a href="https://github.com/lukas-lacko/youtube-search-custom-el" target="_blank">YouTube Search</a> - A custom element enabling YouTube search.
-                </div>
-                <div class="link-item">
-                    <a href="https://github.com/lukas-lacko/kontent-ai-schedule-unpublish" target="_blank">Schedule Unpublish</a> - A webhook script for scheduling the unpublishing of a content item.
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <p class="section-title">Others</p>
-            <div class="link-list">
-                <div class="link-item">
-                    <a href="https://github.com/lukas-lacko/VBA-script---hide-rows-not-in-domain-list" target="_blank">VBA Script for Filtering Email Domains</a> - A VBA script for filtering email domains in Excel.
-                </div>
-            </div>
-        </div>
+        
+        <button onclick="fetchTotalCount()">Count</button>
+        <button onclick="fetchLanguages()">Fetch Languages</button>
+        <select id="languageSelect" style="display: none;"></select>
+        <p id="result"></p>
     </div>
+
+    <script>
+       async function fetchTotalCount() {
+    const envId = document.getElementById('envId').value.trim();
+    const previewKey = document.getElementById('previewKey').value.trim();
+    const previewMode = document.getElementById('previewMode').checked;
+    const languageSelect = document.getElementById('languageSelect');
+    const selectedLanguage = languageSelect.value;
+    const resultElement = document.getElementById('result');
+
+    if (!envId) {
+        resultElement.textContent = 'Environment ID is required';
+        return;
+    }
+    if (previewMode && !previewKey) {
+        resultElement.textContent = 'API Key is required for preview mode';
+        return;
+    }
+
+    let baseUrl = previewMode ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+    let headers = previewKey ? { 'Authorization': `Bearer ${previewKey}` } : {};
+
+    let languageCodes = selectedLanguage ? [selectedLanguage] : await fetchLanguages(true);
+    resultElement.innerHTML = "Fetching data...";
+
+    let results = [];
+    for (const language of languageCodes) {
+        let url = `${baseUrl}/${envId}/items?limit=1&includeTotalCount=true&system.language=${language}&language=${language}`;
+        try {
+            const response = await fetch(url, { headers });
+            let data;
+            
+            try {
+                data = await response.json(); // Try to parse JSON
+            } catch {
+                throw new Error(`Error ${response.status}: Invalid JSON response from server`);
+            }
+
+            if (!response.ok) {
+                let errorMsg = `Error ${data.error_code || response.status}: ${data.message || response.statusText}`;
+                throw new Error(errorMsg);
+            }
+
+            results.push(`${language}: ${data.pagination.total_count}`);
+        } catch (error) {
+            results.push(`${language}: ${error.message}`);
+        }
+    }
+    resultElement.innerHTML = results.join('<br>');
+}
+
+
+
+
+async function fetchLanguages(justReturnList = false) {
+    const envId = document.getElementById('envId').value.trim();
+    const previewKey = document.getElementById('previewKey').value.trim();
+    const previewMode = document.getElementById('previewMode').checked;
+    const languageSelect = document.getElementById('languageSelect');
+
+    if (!envId) {
+        alert('Environment ID is required');
+        return [];
+    }
+
+    let baseUrl = previewMode ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+    let headers = previewKey ? { 'Authorization': `Bearer ${previewKey}` } : {};
+    let url = `${baseUrl}/${envId}/languages`;
+
+    try {
+        const response = await fetch(url, { headers });
+        let data;
+
+        try {
+            data = await response.json(); // Try to parse JSON
+        } catch {
+            throw new Error(`Error ${response.status}: Invalid JSON response from server`);
+        }
+
+        if (!response.ok) {
+            let errorMsg = `Error ${data.error_code || response.status}: ${data.message || response.statusText}`;
+            throw new Error(errorMsg);
+        }
+
+        let languageCodes = data.languages.map(lang => lang.system.codename);
+
+        if (justReturnList) return languageCodes;
+
+        // Populate dropdown
+        languageSelect.innerHTML = '<option value="">All Languages</option>';
+        languageCodes.forEach(lang => {
+            let option = document.createElement('option');
+            option.value = lang;
+            option.textContent = lang;
+            languageSelect.appendChild(option);
+        });
+        languageSelect.style.display = 'inline-block';
+        return languageCodes;
+    } catch (error) {
+        alert(`Failed to fetch languages: ${error.message}`);
+        return [];
+    }
+}
+
+    </script>
 </body>
 </html>
