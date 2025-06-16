@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kontent Finder – Find Duplicate Image Assets Based on Size</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      text-align: center;
+      background-color: #f8f9fa;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Input fields */
+    input[type="text"] {
+      padding: 8px 12px;
+      margin: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      width: 300px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #2196F3;
+      box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+    }
+
+    /* Button styling */
+    button {
+      background-color: #2196F3;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+      margin: 10px;
+    }
+
+    button:hover {
+      background-color: #1976D2;
+    }
+
+    /* Labels */
+    label {
+      font-weight: 500;
+      margin-right: 10px;
+      color: #333;
+    }
+
+    /* Table styling */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #2196F3;
+      color: white;
+      font-weight: 500;
+    }
+
+    /* Status messages */
+    #errorContainer {
+      color: #d32f2f;
+      padding: 10px;
+      margin: 10px 0;
+      font-weight: 500;
+    }
+
+    #loadingMessage {
+      color: #1976D2;
+      padding: 10px;
+      margin: 10px 0;
+      font-weight: 500;
+      display: none;
+    }
+
+    /* Links */
+    a {
+      color: #1976D2;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    a:hover {
+      color: #2196F3;
+      text-decoration: underline;
+    }
+
+    /* Headers */
+    h1 {
+      color: #1976D2;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    p {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    /* Group colors */
+    .group-0 { background-color: #e3f2fd; }
+    .group-1 { background-color: #e8f5e9; }
+    .group-2 { background-color: #fff3e0; }
+    .group-3 { background-color: #fce4ec; }
+    .group-4 { background-color: #f3e5f5; }
+
+    tr:hover {
+      filter: brightness(0.95);
+    }
+
+    /* Image preview styling */
+    .image-preview {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kontent Finder – Find Duplicate Image Assets Based on Size</h1>
+  <p>Find image assets with the same file size in your Kontent.ai project</p>
+
+  <label>Environment ID:</label>
+  <input type="text" id="envId" placeholder="Enter Environment ID" />
+  <label>Management API Key:</label>
+  <input type="text" id="bearerToken" placeholder="Enter MAPI Key" />
+  <button onclick="findDuplicates()">Find Duplicates</button>
+
+  <div id="errorContainer"></div>
+  <div id="loadingMessage">Fetching assets, please wait...</div>
+
+  <table id="assetTable">
+    <thead>
+      <tr>
+        <th>File Name &amp; Link to the UI</th>
+        <th>Size (bytes)</th>
+        <th>Direct URL</th>
+        <th>Image Preview</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    /**
+     * A wrapper around fetch() that:
+     * 1. On HTTP 429, looks for a Retry-After header (seconds). If none, uses exponential backoff.
+     * 2. Retries up to max429Retries times for 429, and up to maxNetworkRetries on network errors.
+     */
+    async function safeFetch(url, options = {}, retryCount429 = 0, retryCountNetwork = 0) {
+      const MAX_429_RETRIES = 5;
+      const MAX_NETWORK_RETRIES = 3;
+
+      try {
+        const response = await fetch(url, options);
+
+        if (response.status === 429) {
+          // Rate‐limited: look for Retry‐After (in seconds)
+          let retryAfterSec = parseInt(response.headers.get('Retry-After'), 10);
+          let delayMs;
+          if (isNaN(retryAfterSec)) {
+            // Fallback to exponential backoff if header not provided
+            delayMs = Math.pow(2, retryCount429) * 500; // 500ms, 1s, 2s, 4s, ...
+          } else {
+            delayMs = retryAfterSec * 1000;
+          }
+
+          if (retryCount429 < MAX_429_RETRIES) {
+            await new Promise(res => setTimeout(res, delayMs));
+            return safeFetch(url, options, retryCount429 + 1, retryCountNetwork);
+          } else {
+            throw new Error('Rate limit exceeded. Please wait and retry later.');
+          }
+        }
+
+        // If not 429, return normally (even if 4xx/5xx, let the caller handle non‐200)
+        return response;
+      } catch (networkErr) {
+        // Network error (e.g. connection dropped). Retry up to MAX_NETWORK_RETRIES.
+        if (retryCountNetwork < MAX_NETWORK_RETRIES) {
+          const backoffDelay = 500 * (retryCountNetwork + 1); // 500ms, 1s, 1.5s
+          await new Promise(res => setTimeout(res, backoffDelay));
+          return safeFetch(url, options, retryCount429, retryCountNetwork + 1);
+        } else {
+          throw networkErr;
+        }
+      }
+    }
+
+    /**
+     * Fetch all image assets page by page, grouping them immediately by size.
+     * After each successful page fetch, wait 160ms to throttle (≈6.25 calls/sec).
+     * Returns an object: { [size: number]: Array<{ id: string, url: string }> }
+     */
+    async function fetchAssetsGroupedBySize(envId, bearerToken) {
+      const sizeGroups = {}; // { [size: number]: Array<{id, url}> }
+      const baseUrl = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
+      let continuationToken = null;
+
+      do {
+        const headers = {
+          'Authorization': `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json'
+        };
+        if (continuationToken) {
+          headers['x-continuation'] = continuationToken;
+        }
+
+        let response;
+        try {
+          response = await safeFetch(baseUrl, { headers });
+        } catch (err) {
+          throw new Error(`Failed to fetch assets: ${err.message}`);
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} while fetching assets`);
+        }
+
+        const data = await response.json();
+        continuationToken = data.pagination.continuation_token;
+
+        // Group each image asset by size on the fly
+        data.assets.forEach(asset => {
+          if (asset.type && asset.type.toLowerCase().startsWith('image/')) {
+            const size = asset.size;
+            const id = asset.id;
+            const url = asset.url;
+
+            if (!sizeGroups[size]) {
+              sizeGroups[size] = [];
+            }
+            sizeGroups[size].push({ id, url });
+          }
+        });
+
+        // Throttle: wait 160ms before next page fetch to respect rate limits
+        await new Promise(res => setTimeout(res, 160));
+      } while (continuationToken);
+
+      return sizeGroups;
+    }
+
+    async function findDuplicates() {
+      const errorContainer = document.getElementById('errorContainer');
+      const loadingMessage = document.getElementById('loadingMessage');
+      const envId = document.getElementById('envId').value.trim();
+      const bearerToken = document.getElementById('bearerToken').value.trim();
+
+      // Clear previous UI states
+      errorContainer.textContent = '';
+      const tbody = document.getElementById('assetTable').querySelector('tbody');
+      tbody.innerHTML = '';
+
+      if (!envId || !bearerToken) {
+        errorContainer.textContent = 'Environment ID and API Key are required!';
+        return;
+      }
+
+      loadingMessage.style.display = 'block';
+
+      let sizeGroups;
+      try {
+        sizeGroups = await fetchAssetsGroupedBySize(envId, bearerToken);
+      } catch (err) {
+        loadingMessage.style.display = 'none';
+        errorContainer.textContent = err.message;
+        return;
+      }
+
+      // Filter sizes that only appear once (we only care about duplicates)
+      const duplicateSizes = Object.entries(sizeGroups)
+        .filter(([size, arr]) => arr.length > 1)
+        .sort(([sizeA], [sizeB]) => Number(sizeB) - Number(sizeA));
+
+      if (duplicateSizes.length === 0) {
+        loadingMessage.style.display = 'none';
+        errorContainer.textContent = 'No duplicate-size images found.';
+        return;
+      }
+
+      // Build table rows using a DocumentFragment for performance
+      const fragment = document.createDocumentFragment();
+
+      duplicateSizes.forEach(([size, assets], groupIndex) => {
+        assets.forEach(({ id, url }) => {
+          const fileName = url.split('/').pop().split('?')[0];
+          const assetUiUrl = `https://app.kontent.ai/${envId}/content-inventory/assets/asset/${id}`;
+          const previewUrl = `${url}?w=50&h=50&fit=clip`;
+
+          const tr = document.createElement('tr');
+          tr.className = `group-${groupIndex % 5}`;
+
+          // Column 1: File name (link to Kontent UI)
+          const tdName = document.createElement('td');
+          const linkToUi = document.createElement('a');
+          linkToUi.href = assetUiUrl;
+          linkToUi.target = '_blank';
+          linkToUi.textContent = fileName;
+          tdName.appendChild(linkToUi);
+
+          // Column 2: Size
+          const tdSize = document.createElement('td');
+          tdSize.textContent = size;
+
+          // Column 3: Direct URL
+          const tdDirect = document.createElement('td');
+          const directLink = document.createElement('a');
+          directLink.href = url;
+          directLink.target = '_blank';
+          directLink.textContent = 'Link';
+          tdDirect.appendChild(directLink);
+
+          // Column 4: Image preview
+          const tdPreview = document.createElement('td');
+          const previewLink = document.createElement('a');
+          previewLink.href = assetUiUrl;
+          previewLink.target = '_blank';
+          const img = document.createElement('img');
+          img.src = previewUrl;
+          img.alt = fileName;
+          img.className = 'image-preview';
+          previewLink.appendChild(img);
+          tdPreview.appendChild(previewLink);
+
+          tr.appendChild(tdName);
+          tr.appendChild(tdSize);
+          tr.appendChild(tdDirect);
+          tr.appendChild(tdPreview);
+
+          fragment.appendChild(tr);
+        });
+      });
+
+      tbody.appendChild(fragment);
+      loadingMessage.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
