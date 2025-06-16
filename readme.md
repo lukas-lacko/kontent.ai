@@ -14,7 +14,7 @@
 
 [Compare uploaded image with images in asset library](https://nestratsa.sk/temp/kontent/image_asset_comparer/)
 
-[Search items by string](https://nestratsa.sk/temp/kontent/search/)
+[Search items by substring](https://nestratsa.sk/temp/kontent/search/)
 
 [Items calculator](https://nestratsa.sk/temp/kontent/total_items/)
 
