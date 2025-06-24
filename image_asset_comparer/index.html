@@ -38,22 +38,28 @@
             margin: 5px;
         }
 
-        .tab {
-            padding: 12px 25px;
+                .tab {
+            padding: 6px 12px;             /* Reduced from 12px 25px */
+            font-size: 12px;               /* Reduced from 16px */
+            border-radius: 6px;            /* Slightly smaller rounding */
+            margin: 4px;
+            font-weight: bold;
             cursor: pointer;
             background: white;
             color: #007BFF;
             border: none;
-            border-radius: 8px;
-            margin: 5px;
-            font-size: 16px;
-            font-weight: bold;
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
-            user-select: none; /* Prevent text selection */
+            user-select: none;
             display: flex;
-            justify-content: space-between; /* Align text and icon */
+            justify-content: center;
             align-items: center;
+            min-width: 100px;              /* Optional: minimum width for consistency */
+        }
+
+        .tab i {
+            font-size: 10px;               /* Smaller icon */
+            margin-left: 4px;
         }
 
         .tab:hover {
@@ -65,13 +71,6 @@
             background: #0056b3;
             color: white;
             box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3);
-        }
-
-        .tab i {
-            font-size: 14px;
-            color: #007BFF; /* Icon color */
-            transition: color 0.3s ease;
-            margin-left: 5px; /* Space between the text and icon */
         }
 
         .tab:hover i {
@@ -107,11 +106,15 @@
 </head>
 <body>
 
+
+
     <div class="tabs">
-                <!-- Compare All by Size -->
+
+
+        <!-- Compare All by Size -->
         <div class="tab-container">
             <button class="tab active" onclick="loadPage('compare-size.html', this)" aria-selected="true" title="Compare All by Size">
-                Compare All by Size
+                Compare All by Image Size
                 <i class="fas fa-external-link-alt" onclick="window.open('compare-size.html', '_blank')"></i>
             </button>
         </div>
@@ -119,7 +122,7 @@
                 <!-- Compare All Basic Hash -->
         <div class="tab-container">
             <button class="tab" onclick="loadPage('compare-hash.html', this)" aria-selected="false" title="Compare All Basic Hash">
-                Compare All Basic Hash
+                Compare All by Image Hash
                 <i class="fas fa-external-link-alt" onclick="window.open('compare-hash.html', '_blank')"></i>
             </button>
         </div>
@@ -127,7 +130,7 @@
 
         <div class="tab-container">
             <button class="tab" onclick="loadPage('advanced.html', this)" aria-selected="false" title="Kontent Lens Advanced">
-                Kontent Lens Advanced
+                Advanced Image Comparison 
                 <i class="fas fa-external-link-alt" onclick="window.open('advanced.html', '_blank')"></i>
             </button>
         </div>
@@ -142,10 +145,18 @@
         
         <div class="tab-container">
             <button class="tab" onclick="loadPage('basic.html', this)" aria-selected="false" title="Kontent Lens Basic">
-                Kontent Lens Basic
+                Compare by Image Hash
                 <i class="fas fa-external-link-alt" onclick="window.open('basic.html', '_blank')"></i>
             </button>
         </div>
+
+                <!-- Info Button (Emoji) -->
+        <div class="tab-container">
+            <button class="tab" onclick="loadPage('readme.html', this)" aria-selected="false" title="Readme / Info">
+                ℹ️
+            </button>
+        </div>
+        
     </div>
 
     <iframe id="contentFrame" src="compare-size.html"></iframe>
