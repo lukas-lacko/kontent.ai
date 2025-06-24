@@ -108,12 +108,22 @@
 <body>
 
     <div class="tabs">
+                <!-- Compare All by Size -->
         <div class="tab-container">
-            <button class="tab active" onclick="loadPage('basic.html', this)" aria-selected="true" title="Kontent Lens Basic">
-                Kontent Lens Basic
-                <i class="fas fa-external-link-alt" onclick="window.open('basic.html', '_blank')"></i>
+            <button class="tab active" onclick="loadPage('compare-size.html', this)" aria-selected="true" title="Compare All by Size">
+                Compare All by Size
+                <i class="fas fa-external-link-alt" onclick="window.open('compare-size.html', '_blank')"></i>
             </button>
         </div>
+
+                <!-- Compare All Basic Hash -->
+        <div class="tab-container">
+            <button class="tab" onclick="loadPage('compare-hash.html', this)" aria-selected="false" title="Compare All Basic Hash">
+                Compare All Basic Hash
+                <i class="fas fa-external-link-alt" onclick="window.open('compare-hash.html', '_blank')"></i>
+            </button>
+        </div>
+
 
         <div class="tab-container">
             <button class="tab" onclick="loadPage('advanced.html', this)" aria-selected="false" title="Kontent Lens Advanced">
@@ -128,9 +138,17 @@
                 <i class="fas fa-external-link-alt" onclick="window.open('face.html', '_blank')"></i>
             </button>
         </div>
+
+        
+        <div class="tab-container">
+            <button class="tab" onclick="loadPage('basic.html', this)" aria-selected="false" title="Kontent Lens Basic">
+                Kontent Lens Basic
+                <i class="fas fa-external-link-alt" onclick="window.open('basic.html', '_blank')"></i>
+            </button>
+        </div>
     </div>
 
-    <iframe id="contentFrame" src="basic.html"></iframe>
+    <iframe id="contentFrame" src="compare-size.html"></iframe>
 
     <script>
         function loadPage(page, button) {
