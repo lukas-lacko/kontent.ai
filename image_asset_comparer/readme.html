@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identifying Duplicate Image Assets in Kontent.ai Using MAPI Scripts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .note {
+            background-color: #ffeb3b;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .demo-link {
+            display: block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1> Identifying Duplicate Image Assets in Kontent.ai Using MAPI Scripts</h1>
+    <p><a href="https://github.com/lukas-lacko/kontent.ai/tree/main/image_asset_comparer" target="_blank">GitHub Repository</a></p>
+    <p><a href="https://nestratsa.sk/temp/kontent/image_asset_comparer/" target="_blank">Online Demo</a></p>
+    <p>Techniques: Comparing the File Size, Hash Comparison, Image Recognition, and Face Detection</p>
+    <p>Managing duplicate image assets in Kontent.ai project can be a challenge. To assist with this, several MAPI-based scripts have been created to help identify potential duplicates. These tools are designed as <strong>proof-of-concept</strong> solutions and may not perform optimally with certain types of images, such as company logos. However, they can significantly streamline the asset review process.</p>
+    <p>✅ All scripts generate direct links to the identified assets in the Kontent.ai UI, making it easy to review and manage them further. On the asset detail page, you can also see where each asset is used within your project.</p>
+    <div class="note">
+        ⚠️ <strong>Usage Note:</strong> Recommended approach is using the first two scripts in order - use the first one to identify most of the duplicates and only after resolving them, use the second one. And then, if needed, you can utilize the other two for specific edge cases.
+    </div>
+    <ul>
+        <li>The first two scripts (Image Size and Image Hash comparison) automatically scan and compare all image assets in your project - no manual upload is required. These are ideal for quickly identifying the majority of duplicates.</li>
+        <li>The last two scripts (Advanced Comparison and Face Recognition) are designed for edge cases - such as cropped, edited, or person-specific images. These require you to upload a specific image to compare against the asset library.</li>
+    </ul>
+    <h2>🔍 1. Compare by Image Size</h2>
+    <p><a href="https://nestratsa.sk/temp/kontent/image_asset_comparer/compare-size.html">Try the script</a></p>
+    <p>This script compares all image assets by their file size. In many cases, this simple method is sufficient to detect duplicates. It also includes image previews to help quickly identify false positives.</p>
+    <h2>🧠 2. Compare by Image Hash (Visual Similarity)</h2>
+    <p><a href="https://nestratsa.sk/temp/kontent/image_asset_comparer/compare-hash.html">Try the script</a></p>
+    <p>When images are resized but visually similar, hash-based comparison can be more effective. This script analyzes the visual content of each image using a basic hashing algorithm. It’s fast and includes image previews, but may not detect cropped or heavily edited versions.</p>
+    <div class="note">
+        ⚠️ <strong>Note:</strong> This method is not effective for cropped images and may miss some duplicates due to its simplicity. Can also detect a lot of false positives - mainly images with the same colored background.
+    </div>
+    <p>This script has also version where you can compare by image upload: <a href="https://nestratsa.sk/temp/kontent/image_asset_comparer/basic.html">Try the script</a></p>
+    <h2>🧪 3. Advanced Image Comparison (Detect Cropped/Edited Versions)</h2>
+    <p><a href="https://nestratsa.sk/temp/kontent/image_asset_comparer/advanced.html">Try the script</a></p>
+    <p>For more complex cases, such as cropped or edited images, this a bit more advanced comparison algorithm offers higher accuracy. You’ll need to upload a specific image to compare against the asset library. While slower, it’s more precise. The first results are typically the most accurate.</p>
+    <div class="note">
+        ⚠️ <strong>Note:</strong> The loading indicators may appear inconsistent, but as long as they’re moving, the script is running.
+    </div>
+    <h2>🧍 4. Face Recognition (Find Images of a Specific Person)</h2>
+    <p><a href="https://nestratsa.sk/temp/kontent/image_asset_comparer/face.html">Try the script</a></p>
+    <p>This tool uses facial recognition to locate images of the same person across your asset library. While slower and bandwidth-intensive (as it fetches full-size images), it tends to be highly accurate.</p>
+</body>
+</html>
