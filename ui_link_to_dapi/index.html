@@ -180,16 +180,72 @@
     <script>
         let environmentID, languageID, itemID, codename, authToken; // Define constants outside functions
         
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.style.display = 'block';
+            errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
         function extractIdsFromUrl(url) {
-            const pattern = /https:\/\/app\.kontent\.ai\/([^\/]+)\/content-inventory\/([^\/]+)\/content\/([^?\s]+)/;
-            const match = url.match(pattern);
+            const trimmedUrl = url.trim();
+            // Remove query string for easier parsing
+            const urlWithoutQuery = trimmedUrl.split('?')[0];
 
-            if (match) {
-                environmentID = match[1];
-                languageID = match[2];
-                itemID = match[3];
+            // Match environmentID and languageID
+            const envLangPattern = /https:\/\/app\.kontent\.ai\/([^\/]+)\/content-inventory\/([^\/]+)/;
+            const envLangMatch = urlWithoutQuery.match(envLangPattern);
 
-                // Determine which API flow to use based on Preview checkbox and API key presence
+            // Get itemID as the last segment after the last slash
+            const pathSegments = urlWithoutQuery.split('/');
+            itemID = pathSegments[pathSegments.length - 1];
+
+            if (envLangMatch && itemID) {
+                environmentID = envLangMatch[1];
+                languageID = envLangMatch[2];
+                // itemID already extracted
+                console.log('Parsed environmentID:', environmentID);
+                console.log('Parsed languageID:', languageID);
+                console.log('Parsed itemID:', itemID);
+                // ... rest of your logic ...
+                return true;
+            } else {
+                console.log('Failed to parse IDs from URL.');
+                return false;
+            }
+        }
+
+        function parseUrl() {
+            // Reset previous API results but keep the error container
+            document.getElementById('languageResult').innerHTML = '';
+            document.getElementById('linkResult').innerHTML = '';
+            document.getElementById('apiResponse').innerHTML = '';
+            // Hide error container at the start
+            document.getElementById('errorContainer').style.display = 'none';
+            
+            const previewChecked = document.getElementById('previewCheckbox').checked;
+            authToken = document.getElementById('authToken').value;
+            
+            if (previewChecked && !authToken) {
+                showError('Access token is required when using Preview API');
+                return;
+            }
+
+            const urlInput = document.getElementById('urlInput').value;
+            const resultContainer = document.getElementById('result');
+
+            // Call extractIdsFromUrl and use the parsed values
+            let parsedItemID = undefined;
+            const originalItemID = itemID; // Save outer itemID in case extractIdsFromUrl fails
+            const wasParsed = extractIdsFromUrl(urlInput);
+            if (wasParsed) {
+                parsedItemID = itemID; // itemID is set by extractIdsFromUrl
+                resultContainer.innerHTML = `
+                    <p><strong>Environment ID:</strong> ${environmentID}</p>
+                    <p><strong>Language ID:</strong> ${languageID}</p>
+                    <p><strong>Item ID:</strong> ${parsedItemID}</p>
+                `;
+                document.querySelector('.result-container').style.display = 'block';
+
                 const previewChecked = document.getElementById('previewCheckbox').checked;
                 const hasAuthToken = authToken && authToken.trim() !== "";
 
@@ -203,41 +259,12 @@
                     // Case 3: Delivery API without API key
                     getLanguageCodename();
                 }
-
-                return true;
             } else {
-                return false;
-            }
-        }
-
-        function parseUrl() {
-            // Reset previous API results but keep the error container
-            document.getElementById('languageResult').innerHTML = '';
-            document.getElementById('linkResult').innerHTML = '';
-            document.getElementById('apiResponse').innerHTML = '';
-            
-            // Show the result container when generating results
-            document.querySelector('.result-container').style.display = 'block';
-            
-            const previewChecked = document.getElementById('previewCheckbox').checked;
-            authToken = document.getElementById('authToken').value;
-            
-            if (previewChecked && !authToken) {
-                showError('Access token is required when using Preview API');
-                return;
-            }
-
-            const urlInput = document.getElementById('urlInput').value;
-            const resultContainer = document.getElementById('result');
-
-            if (extractIdsFromUrl(urlInput)) {
-                resultContainer.innerHTML = `
-                    <p><strong>Environment ID:</strong> ${environmentID}</p>
-                    <p><strong>Language ID:</strong> ${languageID}</p>
-                    <p><strong>Item ID:</strong> ${itemID}</p>
-                `;
-            } else {
+                resultContainer.innerHTML = '';
                 showError('Invalid URL format');
+                // Restore outer itemID if needed
+                itemID = originalItemID;
+                document.querySelector('.result-container').style.display = 'none';
             }
         }
 
