@@ -54,6 +54,16 @@ input[type="text"], select {
   font-size: 16px;
 }
 
+.checkbox-group {
+  margin: 15px 0;
+}
+
+input[type="checkbox"] {
+  margin-right: 8px;
+  width: auto;
+  max-width: none;
+}
+
 select {
   padding: 8px;
 }
@@ -122,8 +132,14 @@ select, input[type="text"] {
   <label for="environmentId">Enter Environment ID:</label>
   <input type="text" id="environmentId" placeholder="Your Environment ID"><br><br>
 
-  <label for="previewApiKey">Enter Preview API Key (optional):</label>
-  <input type="text" id="previewApiKey" placeholder="Your Preview API Key"><br><br>
+  <label for="apiKey" id="apiKeyLabel">Enter API Key (optional):</label>
+  <input type="text" id="apiKey" placeholder="Enter your API key (optional)" autocomplete="off"><br><br>
+
+  <div class="checkbox-group">
+    <label>
+      <input type="checkbox" id="previewCheckbox" onchange="handlePreviewChange()"> Preview API
+    </label>
+  </div>
 
   <div class="button-container">
     <button onclick="fetchData()">Calculate Word Counts</button>
@@ -165,7 +181,8 @@ select, input[type="text"] {
       document.getElementById('output').innerHTML = '';
 
       const environmentId = document.getElementById('environmentId').value;
-      const previewApiKey = document.getElementById('previewApiKey').value;
+      const apiKey = document.getElementById('apiKey').value;
+      const previewChecked = document.getElementById('previewCheckbox').checked;
       const selectedLanguage = document.getElementById('language').value;
 
       if (!environmentId) {
@@ -174,8 +191,16 @@ select, input[type="text"] {
         return;
       }
 
-      const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
-      const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+      if (previewChecked && !apiKey) {
+        showError("API key is required when using Preview API.");
+        setFetchingStatus(false);
+        return;
+      }
+
+      const isPreview = previewChecked;
+      const hasApiKey = apiKey && apiKey.trim() !== "";
+      const baseUrl = isPreview ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+      const headers = hasApiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
 
       function fetchForLanguage(language) {
         let url = `${baseUrl}/${environmentId}/items?limit=1000`;
@@ -243,18 +268,32 @@ select, input[type="text"] {
       output.innerHTML += resultHtml;
     }
 
-    function fetchLanguages() {
+    function fetchLanguages(silentMode = false) {
       return new Promise((resolve, reject) => {
         const environmentId = document.getElementById('environmentId').value;
-        const previewApiKey = document.getElementById('previewApiKey').value;
+        const apiKey = document.getElementById('apiKey').value;
+        const previewChecked = document.getElementById('previewCheckbox').checked;
 
         if (!environmentId) {
-          showError("Environment ID is required to fetch languages.");
+          if (!silentMode) {
+            showError("Environment ID is required to fetch languages.");
+          }
           return reject();
         }
 
-        const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
-        const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+        const isPreview = previewChecked;
+        const hasApiKey = apiKey && apiKey.trim() !== "";
+        
+        // If preview is checked but no API key, don't attempt fetch
+        if (isPreview && !hasApiKey) {
+          if (!silentMode) {
+            showError("API key is required when using Preview API.");
+          }
+          return reject();
+        }
+
+        const baseUrl = isPreview ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+        const headers = hasApiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
 
         fetch(`${baseUrl}/${environmentId}/languages`, { headers })
           .then(response => {
@@ -282,30 +321,67 @@ select, input[type="text"] {
             resolve(languageList);
           })
           .catch(error => {
-            showError("An error occurred while fetching languages.");
+            if (!silentMode) {
+              showError("An error occurred while fetching languages.");
+            }
             reject(error);
           });
       });
     }
 
-    // Auto-fetch languages when environment ID is entered
+    function handlePreviewChange() {
+      const previewChecked = document.getElementById('previewCheckbox').checked;
+      const apiKeyInput = document.getElementById('apiKey');
+      const apiKeyLabel = document.getElementById('apiKeyLabel');
+      
+      if (previewChecked) {
+        apiKeyInput.required = true;
+        apiKeyInput.placeholder = "Enter your API key (required for Preview)";
+        apiKeyLabel.textContent = "Enter API Key (required for Preview):";
+      } else {
+        apiKeyInput.required = false;
+        apiKeyInput.placeholder = "Enter your API key (optional)";
+        apiKeyLabel.textContent = "Enter API Key (optional):";
+      }
+    }
+
+    // Helper function to check if auto-fetch can succeed
+    function canAutoFetchLanguages() {
+      const environmentId = document.getElementById('environmentId').value.trim();
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const previewChecked = document.getElementById('previewCheckbox').checked;
+      
+      // Need environment ID
+      if (!environmentId) return false;
+      
+      // If preview is checked, need API key
+      if (previewChecked && !apiKey) return false;
+      
+      // Otherwise, we can try (delivery API without auth, or with auth)
+      return true;
+    }
+
+    // Auto-fetch languages when environment ID is entered or conditions change
     document.addEventListener('DOMContentLoaded', function() {
       const environmentIdInput = document.getElementById('environmentId');
+      const apiKeyInput = document.getElementById('apiKey');
+      const previewCheckbox = document.getElementById('previewCheckbox');
       let fetchTimeout;
       
-      environmentIdInput.addEventListener('input', function() {
+      function attemptAutoFetch() {
         clearTimeout(fetchTimeout);
-        const envId = this.value.trim();
-        
-        if (envId.length > 0) {
-          // Wait a bit after user stops typing before fetching
-          fetchTimeout = setTimeout(() => {
-            fetchLanguages().catch(() => {
-              // Silently fail if languages can't be fetched (user might not have entered API key yet)
+        fetchTimeout = setTimeout(() => {
+          if (canAutoFetchLanguages()) {
+            fetchLanguages(true).catch(() => {
+              // Silently fail for auto-fetch - user can manually trigger if needed
             });
-          }, 500);
-        }
-      });
+          }
+        }, 500);
+      }
+      
+      environmentIdInput.addEventListener('input', attemptAutoFetch);
+      apiKeyInput.addEventListener('input', attemptAutoFetch);
+      previewCheckbox.addEventListener('change', attemptAutoFetch);
     });
   </script>
 </body>
