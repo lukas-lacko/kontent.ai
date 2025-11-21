@@ -18,5 +18,7 @@
 
 [Items calculator](https://nestratsa.sk/temp/kontent/total_items/)
 
+[Word count calculator](https://nestratsa.sk/temp/kontent/word_count/)
+
 
 Feel free to download and use or edit them as you need.
