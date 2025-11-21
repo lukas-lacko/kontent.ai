@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontent.ai - Word Count for All Items</title>
+<style>body { 
+  font-family: Arial, sans-serif; 
+  margin: 0; 
+  padding: 20px; 
+  background-color: #f4f4f4; 
+  color: #333;
+}
+
+h1 { 
+  text-align: center; 
+  color: #333; 
+  margin-bottom: 30px;
+}
+
+label { 
+  display: block; 
+  margin-bottom: 5px; 
+  color: #333; 
+  font-weight: bold;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto;
+  margin-right: 15px;
+  margin-bottom: 15px;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover { 
+  background-color: #0056b3; 
+}
+
+input[type="text"], select {
+  width: 100%; 
+  max-width: 300px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+select {
+  padding: 8px;
+}
+
+.button-container {
+  display: flex; 
+  gap: 15px; 
+  flex-wrap: wrap; 
+  justify-content: flex-start;
+  margin-bottom: 20px;
+}
+
+#output {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 16px;
+  flex-direction: column;
+}
+
+#output .item-result {
+  background-color: #eef3fa;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  max-width: 360px;
+}
+
+#output .item-link {
+  display: inline-block;
+  padding: 6px 10px;
+  background-color: #007bff;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  margin-right: 10px;
+  transition: background-color 0.3s ease;
+}
+
+#output .item-link:hover {
+  background-color: #0056b3;
+}
+
+.error { 
+  color: red; 
+  font-weight: bold; 
+  margin-bottom: 15px;
+}
+
+select, input[type="text"] {
+  font-size: 16px;
+}
+</style>
+</head>
+<body>
+  <h1>Kontent.ai - Word Count for Content Items</h1>
+  
+  <div id="errorMessage" class="error" style="display: none;"></div>
+  <div id="fetchStatus" style="display: none; font-weight: bold;">Fetching...</div>
+
+  <label for="environmentId">Enter Environment ID:</label>
+  <input type="text" id="environmentId" placeholder="Your Environment ID"><br><br>
+
+  <label for="previewApiKey">Enter Preview API Key (optional):</label>
+  <input type="text" id="previewApiKey" placeholder="Your Preview API Key"><br><br>
+
+  <div class="button-container">
+    <button onclick="fetchData()">Calculate Word Counts</button>
+    <button id="fetchLanguagesBtn" onclick="fetchLanguages()">Fetch Languages (optional)</button>
+    <select id="language" style="display: none;">
+        <option value="">All Languages</option>
+    </select><br><br>
+  </div>
+
+  <div id="output" style="display: none;"></div>
+
+  <script>
+    let languageIdMap = {}; // Map to store language codename -> id
+
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    function setFetchingStatus(show) {
+      document.getElementById('fetchStatus').style.display = show ? 'block' : 'none';
+    }
+
+    function wordCount(text) {
+      // Counts words in a string
+      if (!text) return 0;
+      // Remove html tags, split by whitespace
+      return text.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length;
+    }
+
+    function fetchData() {
+      hideError();
+      setFetchingStatus(true);
+      document.getElementById('output').innerHTML = '';
+
+      const environmentId = document.getElementById('environmentId').value;
+      const previewApiKey = document.getElementById('previewApiKey').value;
+      const selectedLanguage = document.getElementById('language').value;
+
+      if (!environmentId) {
+        showError("Environment ID is required.");
+        setFetchingStatus(false);
+        return;
+      }
+
+      const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+      const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+
+      function fetchForLanguage(language) {
+        let url = `${baseUrl}/${environmentId}/items?limit=1000`;
+        if (language) {
+          url += `&language=${language}&system.language=${language}`;
+        }
+
+        let totalWordsForLanguage = 0;
+
+        function fetchNextPage(nextUrl) {
+          fetch(nextUrl, { headers })
+            .then(response => {
+              if (!response.ok) throw new Error('Error fetching content items.');
+              return response.json();
+            })
+            .then(data => {
+              data.items.forEach(item => {
+                for (const key in item.elements) {
+                  const value = item.elements[key].value;
+                  if (typeof value === "string") {
+                    totalWordsForLanguage += wordCount(value);
+                  } else if (Array.isArray(value)) {
+                    // In case a field is e.g. a list of texts/strings
+                    value.forEach(val => {
+                      if (typeof val === "string") totalWordsForLanguage += wordCount(val);
+                    });
+                  }
+                  // If you want to support more types (e.g. richtext/object), customize here
+                }
+              });
+              if (data.pagination && data.pagination.next_page) {
+                fetchNextPage(data.pagination.next_page);
+              } else {
+                displayResults(totalWordsForLanguage, language);
+              }
+            })
+            .catch(error => {
+              showError("An error occurred while fetching items.");
+              console.error(error);
+              setFetchingStatus(false);
+            });
+        }
+        fetchNextPage(url);
+      }
+
+      if (selectedLanguage) {
+        fetchForLanguage(selectedLanguage);
+      } else {
+        fetchLanguages().then(languages => {
+          languages.forEach(lang => fetchForLanguage(lang.codename));
+        });
+      }
+    }
+
+    function displayResults(totalWordsForLang, language) {
+      setFetchingStatus(false);
+      const output = document.getElementById('output');
+      output.style.display = 'block';
+      let langLabel = language || 'All';
+      
+      let resultHtml = `<div style="margin-bottom: 15px;">
+        <p><b>Language (${langLabel}):</b> Total Words: <b>${totalWordsForLang}</b></p>
+      </div>`;
+      
+      output.innerHTML += resultHtml;
+    }
+
+    function fetchLanguages() {
+      return new Promise((resolve, reject) => {
+        const environmentId = document.getElementById('environmentId').value;
+        const previewApiKey = document.getElementById('previewApiKey').value;
+
+        if (!environmentId) {
+          showError("Environment ID is required to fetch languages.");
+          return reject();
+        }
+
+        const baseUrl = previewApiKey ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
+        const headers = previewApiKey ? { 'Authorization': `Bearer ${previewApiKey}` } : {};
+
+        fetch(`${baseUrl}/${environmentId}/languages`, { headers })
+          .then(response => {
+            if (!response.ok) throw new Error('Error fetching languages.');
+            return response.json();
+          })
+          .then(data => {
+            const languageSelector = document.getElementById('language');
+            languageSelector.innerHTML = '<option value="">All Languages</option>';
+            let languageList = [];
+            data.languages.forEach(lang => {
+              languageList.push({
+                codename: lang.system.codename,
+                id: lang.system.id,
+              });
+              languageIdMap[lang.system.codename] = lang.system.id;
+              const option = document.createElement('option');
+              option.value = lang.system.codename;
+              option.textContent = lang.system.codename;
+              languageSelector.appendChild(option);
+            });
+            // Keep "All Languages" selected by default (empty value)
+            document.getElementById('fetchLanguagesBtn').style.display = 'none';
+            languageSelector.style.display = 'inline-block';
+            resolve(languageList);
+          })
+          .catch(error => {
+            showError("An error occurred while fetching languages.");
+            reject(error);
+          });
+      });
+    }
+
+    // Auto-fetch languages when environment ID is entered
+    document.addEventListener('DOMContentLoaded', function() {
+      const environmentIdInput = document.getElementById('environmentId');
+      let fetchTimeout;
+      
+      environmentIdInput.addEventListener('input', function() {
+        clearTimeout(fetchTimeout);
+        const envId = this.value.trim();
+        
+        if (envId.length > 0) {
+          // Wait a bit after user stops typing before fetching
+          fetchTimeout = setTimeout(() => {
+            fetchLanguages().catch(() => {
+              // Silently fail if languages can't be fetched (user might not have entered API key yet)
+            });
+          }, 500);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
