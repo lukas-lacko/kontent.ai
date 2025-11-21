@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kontent.ai - Word Count for All Items</title>
 <style>body { 
-  font-family: Arial, sans-serif; 
+  font-family: "Helvetica Narrow", "Helvetica Neue", Helvetica, Arial, sans-serif; 
   margin: 0; 
   padding: 20px; 
   background-color: #f4f4f4; 
@@ -27,10 +27,10 @@ label {
 
 button {
   padding: 10px 20px;
-  background-color: #007bff;
+  background-color: #5b4ff5;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 50px;
   cursor: pointer;
   width: auto;
   margin-right: 15px;
@@ -40,7 +40,7 @@ button {
 }
 
 button:hover { 
-  background-color: #0056b3; 
+  background-color: #3b23f0; 
 }
 
 input[type="text"], select {
@@ -49,7 +49,7 @@ input[type="text"], select {
   padding: 10px;
   margin-bottom: 15px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 50px;
   box-sizing: border-box;
   font-size: 16px;
 }
@@ -81,7 +81,7 @@ select {
   padding: 15px;
   background-color: #fff;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 25px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -91,7 +91,7 @@ select {
 
 #output .item-result {
   background-color: #eef3fa;
-  border-radius: 4px;
+  border-radius: 25px;
   margin-bottom: 10px;
   padding: 8px 12px;
   max-width: 360px;
@@ -100,16 +100,16 @@ select {
 #output .item-link {
   display: inline-block;
   padding: 6px 10px;
-  background-color: #007bff;
+  background-color: #5b4ff5;
   color: #fff;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: 50px;
   margin-right: 10px;
   transition: background-color 0.3s ease;
 }
 
 #output .item-link:hover {
-  background-color: #0056b3;
+  background-color: #3b23f0;
 }
 
 .error { 
@@ -314,7 +314,7 @@ select, input[type="text"] {
           .sort((a, b) => b[1] - a[1]);
         
         sortedItems.forEach(([codename, count]) => {
-          resultHtml += `<p style="margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px;">
+          resultHtml += `<p style="margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 50px;">
             <b>${codename}:</b> ${count} words
           </p>`;
         });
