@@ -139,6 +139,10 @@ select, input[type="text"] {
     <label>
       <input type="checkbox" id="previewCheckbox" onchange="handlePreviewChange()"> Preview API
     </label>
+    <br>
+    <label>
+      <input type="checkbox" id="showPerItemCheckbox"> Show word count for each content item
+    </label>
   </div>
 
   <div class="button-container">
@@ -201,6 +205,7 @@ select, input[type="text"] {
       const hasApiKey = apiKey && apiKey.trim() !== "";
       const baseUrl = isPreview ? `https://preview-deliver.kontent.ai` : `https://deliver.kontent.ai`;
       const headers = hasApiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
+      const showPerItem = document.getElementById('showPerItemCheckbox').checked;
 
       function fetchForLanguage(language) {
         let url = `${baseUrl}/${environmentId}/items?limit=1000`;
@@ -209,6 +214,7 @@ select, input[type="text"] {
         }
 
         let totalWordsForLanguage = 0;
+        let perItemCounts = {}; // Store word counts per item codename
 
         function fetchNextPage(nextUrl) {
           fetch(nextUrl, { headers })
@@ -218,23 +224,56 @@ select, input[type="text"] {
             })
             .then(data => {
               data.items.forEach(item => {
-                for (const key in item.elements) {
-                  const value = item.elements[key].value;
-                  if (typeof value === "string") {
-                    totalWordsForLanguage += wordCount(value);
-                  } else if (Array.isArray(value)) {
-                    // In case a field is e.g. a list of texts/strings
-                    value.forEach(val => {
-                      if (typeof val === "string") totalWordsForLanguage += wordCount(val);
-                    });
+                if (showPerItem) {
+                  // Only track per-item counts when checkbox is checked
+                  let itemWordCount = 0;
+                  const itemCodename = item.system.codename || item.system.id;
+                  
+                  for (const key in item.elements) {
+                    const value = item.elements[key].value;
+                    if (typeof value === "string") {
+                      const words = wordCount(value);
+                      totalWordsForLanguage += words;
+                      itemWordCount += words;
+                    } else if (Array.isArray(value)) {
+                      // In case a field is e.g. a list of texts/strings
+                      value.forEach(val => {
+                        if (typeof val === "string") {
+                          const words = wordCount(val);
+                          totalWordsForLanguage += words;
+                          itemWordCount += words;
+                        }
+                      });
+                    }
+                    // If you want to support more types (e.g. richtext/object), customize here
                   }
-                  // If you want to support more types (e.g. richtext/object), customize here
+                  
+                  // Store per-item count if it has words
+                  if (itemWordCount > 0) {
+                    perItemCounts[itemCodename] = itemWordCount;
+                  }
+                } else {
+                  // When checkbox is not checked, only calculate total (no per-item tracking)
+                  for (const key in item.elements) {
+                    const value = item.elements[key].value;
+                    if (typeof value === "string") {
+                      totalWordsForLanguage += wordCount(value);
+                    } else if (Array.isArray(value)) {
+                      // In case a field is e.g. a list of texts/strings
+                      value.forEach(val => {
+                        if (typeof val === "string") {
+                          totalWordsForLanguage += wordCount(val);
+                        }
+                      });
+                    }
+                    // If you want to support more types (e.g. richtext/object), customize here
+                  }
                 }
               });
               if (data.pagination && data.pagination.next_page) {
                 fetchNextPage(data.pagination.next_page);
               } else {
-                displayResults(totalWordsForLanguage, language);
+                displayResults(totalWordsForLanguage, language, showPerItem ? perItemCounts : null);
               }
             })
             .catch(error => {
@@ -255,16 +294,35 @@ select, input[type="text"] {
       }
     }
 
-    function displayResults(totalWordsForLang, language) {
+    function displayResults(totalWordsForLang, language, perItemCounts) {
       setFetchingStatus(false);
       const output = document.getElementById('output');
       output.style.display = 'block';
       let langLabel = language || 'All';
       
       let resultHtml = `<div style="margin-bottom: 15px;">
-        <p><b>Language (${langLabel}):</b> Total Words: <b>${totalWordsForLang}</b></p>
-      </div>`;
+        <p><b>Language (${langLabel}):</b> Total Words: <b>${totalWordsForLang}</b></p>`;
       
+      // Display per-item counts if available
+      if (perItemCounts && Object.keys(perItemCounts).length > 0) {
+        resultHtml += `<div style="margin-top: 10px; margin-left: 20px;">
+          <p><b>Per-item word counts:</b></p>
+          <div style="max-height: 400px; overflow-y: auto; margin-top: 5px;">`;
+        
+        // Sort items by word count (descending) for better readability
+        const sortedItems = Object.entries(perItemCounts)
+          .sort((a, b) => b[1] - a[1]);
+        
+        sortedItems.forEach(([codename, count]) => {
+          resultHtml += `<p style="margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px;">
+            <b>${codename}:</b> ${count} words
+          </p>`;
+        });
+        
+        resultHtml += `</div></div>`;
+      }
+      
+      resultHtml += `</div>`;
       output.innerHTML += resultHtml;
     }
 
