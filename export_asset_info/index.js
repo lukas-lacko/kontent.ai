@@ -48,6 +48,7 @@ const fetchButton = document.getElementById('fetchButton');
                 const size = asset.size;
                 const foldId = asset.folder && asset.folder.id ? asset.folder.id : 'No Folder';
                 const url = asset.url;
+                const last_modified = asset.last_modified;
 
               // Push the extracted data into the array
               extractedData.push({
@@ -56,6 +57,7 @@ const fetchButton = document.getElementById('fetchButton');
                 size,
                 foldId,
                 url,
+                last_modified,
             });
 
             });
@@ -71,7 +73,7 @@ const fetchButton = document.getElementById('fetchButton');
             console.log(extractedData)
 
             // Define the fields you want to include in the CSV
-            const fields = ['file_name', 'id', 'size', 'foldId', 'url'];
+            const fields = ['file_name', 'id', 'size', 'foldId', 'url', 'last_modified'];
 
             // Create a CSV header with field names
             const csvHeader = fields.join(';') + '\n';
