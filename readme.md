@@ -18,6 +18,8 @@
 
 [Items calculator](https://nestratsa.sk/temp/kontent/total_items/)
 
+[Items within Collections calculator](https://nestratsa.sk/temp/kontent/collections/)
+
 [Word count calculator](https://nestratsa.sk/temp/kontent/word_count/)
 
 
