@@ -16,7 +16,7 @@
 
 [Search items by substring](https://nestratsa.sk/temp/kontent/search/)
 
-[Kontent calculator(https://nestratsa.sk/temp/kontent/calculator/)
+[Kontent calculator](https://nestratsa.sk/temp/kontent/calculator/)
 
 [Items calculator](https://nestratsa.sk/temp/kontent/total_items/)
 
