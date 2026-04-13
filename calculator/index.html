@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontent.ai Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            max-width: 520px;
+            width: 100%;
+        }
+        h2 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        input, select, button {
+            width: 90%;
+            max-width: 460px;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus, select:focus {
+            border-color: #5b4ff5;
+            box-shadow: 0 0 8px rgba(91, 79, 245, 0.3);
+        }
+        button {
+            background-color: #5b4ff5;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #3b23f0;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        p {
+            font-size: 18px;
+            margin-top: 20px;
+            color: #333;
+        }
+        .results-container {
+            margin-top: 20px;
+            text-align: left;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .group-section {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #eef3fa;
+            border-radius: 8px;
+        }
+        .group-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #5b4ff5;
+            margin-bottom: 10px;
+        }
+        .language-count {
+            margin: 5px 0;
+            padding-left: 15px;
+        }
+        .item-result {
+            background-color: #eef3fa;
+            border-radius: 25px;
+            margin: 6px 0 8px 0;
+            padding: 6px 12px;
+            max-width: 420px;
+        }
+        .hidden {
+            display: none;
+        }
+        label[for="modeSelect"] {
+            font-weight: 700;
+        }
+        #modeSelect {
+            background-color: #eef3fa;
+            border-color: #cfd7e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Kontent.ai Calculator</h2>
+
+        <label for="envId">Environment ID:</label>
+        <input type="text" id="envId" required placeholder="Enter Environment ID">
+
+        <label for="previewKey">Delivery API Key (Optional, required for Preview API):</label>
+        <input type="password" id="previewKey" placeholder="Enter API Key">
+
+        <label for="modeSelect">Count Mode:</label>
+        <select id="modeSelect">
+            <option value="total">All Items</option>
+            <option value="collection">By Collection</option>
+            <option value="type">By Type</option>
+            <option value="wordcount">Word Count (All Items)</option>
+            <option value="assets">Asset Count (MAPI)</option>
+        </select>
+
+        <div id="collectionSection" class="hidden">
+            <label for="collectionCodename">Collection Codename (Optional, manual entry):</label>
+            <input type="text" id="collectionCodename" placeholder="Enter Collection Codename">
+        </div>
+
+        <div id="managementKeySection" class="hidden">
+            <label for="managementKey">Management API Key (Required for collections autofetching/assets):</label>
+            <input type="password" id="managementKey" placeholder="Enter Management API Key">
+        </div>
+
+        <div id="typeSection" class="hidden">
+            <label for="typeCodename">Type Codename (Optional, manual entry):</label>
+            <input type="text" id="typeCodename" placeholder="Enter Type Codename">
+        </div>
+
+        <div id="wordCountSection" class="hidden">
+            <div class="checkbox-container">
+                <input type="checkbox" id="showPerItemCheckbox">
+                <label for="showPerItemCheckbox">Show word count for each content item</label>
+            </div>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="previewMode">
+            <label for="previewMode">Use Preview API</label>
+        </div>
+
+        <button onclick="fetchTotalCount()">Count</button>
+        <button onclick="fetchLanguages()">Fetch Languages</button>
+        <button id="exportCsvBtn" onclick="exportResultsCsv()" disabled>Export CSV</button>
+        <button id="clearSavedBtn" onclick="clearSavedInputs()">Clear Saved Inputs</button>
+        <select id="languageSelect" style="display: none;"></select>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        const modeSelect = document.getElementById('modeSelect');
+        const collectionSection = document.getElementById('collectionSection');
+        const typeSection = document.getElementById('typeSection');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const clearSavedBtn = document.getElementById('clearSavedBtn');
+        const wordCountSection = document.getElementById('wordCountSection');
+        const managementKeySection = document.getElementById('managementKeySection');
+
+        const STORAGE_KEY = 'kontent_counter_inputs_v1';
+        let lastResults = null;
+
+        modeSelect.addEventListener('change', () => {
+            const mode = modeSelect.value;
+            collectionSection.classList.toggle('hidden', mode !== 'collection');
+            typeSection.classList.toggle('hidden', mode !== 'type');
+            wordCountSection.classList.toggle('hidden', mode !== 'wordcount');
+            managementKeySection.classList.toggle('hidden', !(mode === 'collection' || mode === 'assets'));
+            persistInputs();
+        });
+
+        const inputIds = [
+            'envId',
+            'previewKey',
+            'collectionCodename',
+            'managementKey',
+            'typeCodename',
+            'previewMode',
+            'modeSelect',
+            'languageSelect',
+            'showPerItemCheckbox'
+        ];
+
+        inputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', persistInputs);
+            if (el.tagName === 'INPUT') {
+                el.addEventListener('input', persistInputs);
+            }
+        });
+
+        restoreInputs();
+
+        function getBaseConfig() {
+            const envId = document.getElementById('envId').value.trim();
+            const previewKey = document.getElementById('previewKey').value.trim();
+            const previewMode = document.getElementById('previewMode').checked;
+
+            if (!envId) {
+                throw new Error('Environment ID is required');
+            }
+            if (previewMode && !previewKey) {
+                throw new Error('API Key is required for preview mode');
+            }
+
+            const baseUrl = previewMode
+                ? 'https://preview-deliver.kontent.ai'
+                : 'https://deliver.kontent.ai';
+            const headers = previewKey ? { 'Authorization': `Bearer ${previewKey}` } : {};
+
+            return { envId, previewKey, previewMode, baseUrl, headers };
+        }
+
+        async function fetchJson(url, headers) {
+            const response = await fetch(url, { headers });
+            let data;
+
+            try {
+                data = await response.json();
+            } catch {
+                throw new Error(`Error ${response.status}: Invalid JSON response from server`);
+            }
+
+            if (!response.ok) {
+                const errorMsg = `Error ${data.error_code || response.status}: ${data.message || response.statusText}`;
+                throw new Error(errorMsg);
+            }
+
+            return data;
+        }
+
+        async function fetchCollections() {
+            const envId = document.getElementById('envId').value.trim();
+            const managementKey = document.getElementById('managementKey').value.trim();
+
+            if (!envId) {
+                throw new Error('Environment ID is required');
+            }
+            if (!managementKey) {
+                throw new Error('Management API Key is required');
+            }
+
+            const url = `https://manage.kontent.ai/v2/projects/${envId}/collections`;
+            const headers = {
+                'Authorization': `Bearer ${managementKey}`,
+                'Content-type': 'application/json'
+            };
+
+            const data = await fetchJson(url, headers);
+            return data.collections.map(collection => collection.codename);
+        }
+
+        async function fetchTypes() {
+            const { envId, baseUrl, headers } = getBaseConfig();
+            const url = `${baseUrl}/${envId}/types`;
+            const data = await fetchJson(url, headers);
+            return data.types.map(type => type.system.codename);
+        }
+
+        async function fetchTotalCount() {
+            const resultElement = document.getElementById('result');
+            const languageSelect = document.getElementById('languageSelect');
+            const selectedLanguage = languageSelect.value;
+            const mode = modeSelect.value;
+
+            try {
+                const { envId, baseUrl, headers } = getBaseConfig();
+                const languageCodes = selectedLanguage ? [selectedLanguage] : await fetchLanguages(true);
+                resultElement.innerHTML = 'Fetching data...';
+                exportCsvBtn.disabled = true;
+                lastResults = null;
+
+                if (mode === 'total') {
+                    const results = await countItemsByGroups(envId, baseUrl, headers, languageCodes, [null], 'All Items');
+                    lastResults = { kind: 'grouped', data: results };
+                    renderGroupedResults(results);
+                    exportCsvBtn.disabled = false;
+                    return;
+                }
+
+                if (mode === 'collection') {
+                    const collectionCodename = document.getElementById('collectionCodename').value.trim();
+                    const managementKey = document.getElementById('managementKey').value.trim();
+
+                    let collections = [];
+                    if (collectionCodename) {
+                        collections = [collectionCodename];
+                    } else if (managementKey) {
+                        resultElement.innerHTML = 'Fetching collections and data...';
+                        collections = await fetchCollections();
+                    }
+
+                    if (collections.length === 0) {
+                        collections = [null];
+                    }
+
+                    const results = await countItemsByGroups(envId, baseUrl, headers, languageCodes, collections, 'All Collections', 'collection');
+                    lastResults = { kind: 'grouped', data: results };
+                    renderGroupedResults(results);
+                    exportCsvBtn.disabled = false;
+                    return;
+                }
+
+                if (mode === 'type') {
+                    const typeCodename = document.getElementById('typeCodename').value.trim();
+                    let types = [];
+
+                    if (typeCodename) {
+                        types = [typeCodename];
+                    } else {
+                        resultElement.innerHTML = 'Fetching types and data...';
+                        types = await fetchTypes();
+                    }
+
+                    if (types.length === 0) {
+                        types = [null];
+                    }
+
+                    const results = await countItemsByGroups(envId, baseUrl, headers, languageCodes, types, 'All Types', 'type');
+                    lastResults = { kind: 'grouped', data: results };
+                    renderGroupedResults(results);
+                    exportCsvBtn.disabled = false;
+                }
+
+                if (mode === 'wordcount') {
+                    const showPerItem = document.getElementById('showPerItemCheckbox').checked;
+                    const results = await countWordsByLanguage(envId, baseUrl, headers, languageCodes, showPerItem);
+                    renderWordCountResults(results, showPerItem);
+                    lastResults = { kind: 'wordcount', data: results, showPerItem };
+                    exportCsvBtn.disabled = false;
+                    return;
+                }
+
+                if (mode === 'assets') {
+                    const managementKey = document.getElementById('managementKey').value.trim();
+                    if (!managementKey) {
+                        throw new Error('Management API Key is required for assets');
+                    }
+                    resultElement.innerHTML = 'Fetching assets...';
+                    const totalAssets = await countAssetsWithMapi(envId, managementKey);
+                    resultElement.innerHTML = `<div class="results-container"><div class="group-section"><div class="group-name">Assets</div><div class="language-count">Total assets: ${totalAssets}</div></div></div>`;
+                    lastResults = { kind: 'assets', totalAssets };
+                    exportCsvBtn.disabled = false;
+                }
+            } catch (error) {
+                resultElement.textContent = error.message;
+                exportCsvBtn.disabled = true;
+                lastResults = null;
+            }
+        }
+
+        async function countItemsByGroups(envId, baseUrl, headers, languageCodes, groups, emptyLabel, groupKind = null) {
+            const results = {};
+
+            for (const group of groups) {
+                const groupName = group || emptyLabel;
+                results[groupName] = {};
+
+                for (const language of languageCodes) {
+                    let url = `${baseUrl}/${envId}/items?limit=1&includeTotalCount=true&system.language=${language}&language=${language}`;
+                    if (groupKind === 'collection' && group) {
+                        url += `&system.collection=${group}`;
+                    }
+                    if (groupKind === 'type' && group) {
+                        url += `&system.type=${group}`;
+                    }
+
+                    try {
+                        const data = await fetchJson(url, headers);
+                        results[groupName][language] = data.pagination.total_count;
+                    } catch (error) {
+                        results[groupName][language] = `Error: ${error.message}`;
+                    }
+                }
+            }
+
+            return results;
+        }
+
+        function renderGroupedResults(results) {
+            const resultElement = document.getElementById('result');
+            let html = '<div class="results-container">';
+
+            for (const [groupName, languageCounts] of Object.entries(results)) {
+                html += '<div class="group-section">';
+                html += `<div class="group-name">${groupName}</div>`;
+                for (const [language, count] of Object.entries(languageCounts)) {
+                    html += `<div class="language-count">${language}: ${count}</div>`;
+                }
+                html += '</div>';
+            }
+
+            html += '</div>';
+            resultElement.innerHTML = html;
+        }
+
+        function wordCountText(text) {
+            if (!text) return 0;
+            return text
+                .replace(/<[^>]+>/g, ' ')
+                .trim()
+                .split(/\s+/)
+                .filter(word => word.length > 0).length;
+        }
+
+        function countWordsInValue(value) {
+            if (typeof value === 'string') {
+                return wordCountText(value);
+            }
+            if (Array.isArray(value)) {
+                return value.reduce((sum, entry) => sum + countWordsInValue(entry), 0);
+            }
+            return 0;
+        }
+
+        async function countWordsByLanguage(envId, baseUrl, headers, languageCodes, showPerItem) {
+            const results = {};
+
+            for (const language of languageCodes) {
+                let totalWords = 0;
+                const perItemCounts = {};
+                let nextUrl = `${baseUrl}/${envId}/items?limit=1000&system.language=${language}&language=${language}`;
+
+                while (nextUrl) {
+                    const data = await fetchJson(nextUrl, headers);
+                    data.items.forEach(item => {
+                        let itemWordCount = 0;
+                        for (const key in item.elements) {
+                            const value = item.elements[key].value;
+                            const words = countWordsInValue(value);
+                            totalWords += words;
+                            itemWordCount += words;
+                        }
+                        if (showPerItem && itemWordCount > 0) {
+                            const itemKey = item.system.codename || item.system.id;
+                            perItemCounts[itemKey] = itemWordCount;
+                        }
+                    });
+                    nextUrl = data.pagination && data.pagination.next_page ? data.pagination.next_page : null;
+                }
+
+                results[language] = {
+                    totalWords,
+                    perItemCounts: showPerItem ? perItemCounts : null
+                };
+            }
+
+            return results;
+        }
+
+        function renderWordCountResults(results, showPerItem) {
+            const resultElement = document.getElementById('result');
+            let html = '<div class="results-container">';
+
+            for (const [language, data] of Object.entries(results)) {
+                html += '<div class="group-section">';
+                html += `<div class="group-name">${language}</div>`;
+                html += `<div class="language-count">Total words: ${data.totalWords}</div>`;
+
+                if (showPerItem && data.perItemCounts && Object.keys(data.perItemCounts).length > 0) {
+                    const sortedItems = Object.entries(data.perItemCounts)
+                        .sort((a, b) => b[1] - a[1]);
+                    sortedItems.forEach(([codename, count]) => {
+                        html += `<div class="item-result"><strong>${codename}:</strong> ${count} words</div>`;
+                    });
+                }
+
+                html += '</div>';
+            }
+
+            html += '</div>';
+            resultElement.innerHTML = html;
+        }
+
+        async function countAssetsWithMapi(envId, managementKey) {
+            let totalAssets = 0;
+            let continuationToken = null;
+            const apiUrl = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
+
+            do {
+                const headers = {
+                    'Authorization': `Bearer ${managementKey}`,
+                    'Content-Type': 'application/json'
+                };
+                if (continuationToken) {
+                    headers['x-continuation'] = continuationToken;
+                }
+
+                const response = await fetch(apiUrl, { method: 'GET', headers });
+                let data;
+                try {
+                    data = await response.json();
+                } catch {
+                    throw new Error(`Error ${response.status}: Invalid JSON response from server`);
+                }
+
+                if (!response.ok) {
+                    const errorMsg = `Error ${data.error_code || response.status}: ${data.message || response.statusText}`;
+                    throw new Error(errorMsg);
+                }
+
+                totalAssets += data.assets.length;
+                continuationToken = data.pagination && data.pagination.continuation_token
+                    ? data.pagination.continuation_token
+                    : null;
+            } while (continuationToken);
+
+            return totalAssets;
+        }
+
+        async function fetchLanguages(justReturnList = false) {
+            const languageSelect = document.getElementById('languageSelect');
+
+            try {
+                const { envId, baseUrl, headers } = getBaseConfig();
+                const url = `${baseUrl}/${envId}/languages`;
+                const data = await fetchJson(url, headers);
+
+                const languageCodes = data.languages.map(lang => lang.system.codename);
+                if (justReturnList) return languageCodes;
+
+                languageSelect.innerHTML = '<option value="">All Languages</option>';
+                languageCodes.forEach(lang => {
+                    const option = document.createElement('option');
+                    option.value = lang;
+                    option.textContent = lang;
+                    languageSelect.appendChild(option);
+                });
+                languageSelect.style.display = 'inline-block';
+                restoreLanguageSelection();
+                return languageCodes;
+            } catch (error) {
+                alert(`Failed to fetch languages: ${error.message}`);
+                return [];
+            }
+        }
+
+        function persistInputs() {
+            const payload = {
+                envId: document.getElementById('envId').value.trim(),
+                previewKey: document.getElementById('previewKey').value.trim(),
+                collectionCodename: document.getElementById('collectionCodename').value.trim(),
+                managementKey: document.getElementById('managementKey').value.trim(),
+                typeCodename: document.getElementById('typeCodename').value.trim(),
+                previewMode: document.getElementById('previewMode').checked,
+                showPerItemCheckbox: document.getElementById('showPerItemCheckbox').checked,
+                modeSelect: modeSelect.value,
+                languageSelect: document.getElementById('languageSelect').value || ''
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        }
+
+        function restoreInputs() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch {
+                return;
+            }
+
+            document.getElementById('envId').value = data.envId || '';
+            document.getElementById('previewKey').value = data.previewKey || '';
+            document.getElementById('collectionCodename').value = data.collectionCodename || '';
+            document.getElementById('managementKey').value = data.managementKey || '';
+            document.getElementById('typeCodename').value = data.typeCodename || '';
+            document.getElementById('previewMode').checked = Boolean(data.previewMode);
+            document.getElementById('showPerItemCheckbox').checked = Boolean(data.showPerItemCheckbox);
+            if (data.modeSelect) {
+                modeSelect.value = data.modeSelect;
+            }
+            collectionSection.classList.toggle('hidden', modeSelect.value !== 'collection');
+            typeSection.classList.toggle('hidden', modeSelect.value !== 'type');
+            wordCountSection.classList.toggle('hidden', modeSelect.value !== 'wordcount');
+            managementKeySection.classList.toggle('hidden', !(modeSelect.value === 'collection' || modeSelect.value === 'assets'));
+        }
+
+        function restoreLanguageSelection() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            try {
+                const data = JSON.parse(raw);
+                if (data.languageSelect) {
+                    document.getElementById('languageSelect').value = data.languageSelect;
+                }
+            } catch {
+                return;
+            }
+        }
+
+        function clearSavedInputs() {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('envId').value = '';
+            document.getElementById('previewKey').value = '';
+            document.getElementById('collectionCodename').value = '';
+            document.getElementById('managementKey').value = '';
+            document.getElementById('typeCodename').value = '';
+            document.getElementById('previewMode').checked = false;
+            document.getElementById('showPerItemCheckbox').checked = false;
+            modeSelect.value = 'total';
+            collectionSection.classList.add('hidden');
+            typeSection.classList.add('hidden');
+            wordCountSection.classList.add('hidden');
+            managementKeySection.classList.add('hidden');
+            document.getElementById('languageSelect').value = '';
+            exportCsvBtn.disabled = true;
+            lastResults = null;
+        }
+
+        function exportResultsCsv() {
+            if (!lastResults) return;
+
+            let csv = '';
+            if (lastResults.kind === 'grouped') {
+                csv = 'Group,Language,Count\n';
+                for (const [groupName, languageCounts] of Object.entries(lastResults.data)) {
+                    for (const [language, count] of Object.entries(languageCounts)) {
+                        const safeGroup = String(groupName).replace(/"/g, '""');
+                        const safeLang = String(language).replace(/"/g, '""');
+                        const safeCount = String(count).replace(/"/g, '""');
+                        csv += `"${safeGroup}","${safeLang}","${safeCount}"\n`;
+                    }
+                }
+            } else if (lastResults.kind === 'wordcount') {
+                csv = 'Language,TotalWords,ItemCodename,ItemWords\n';
+                for (const [language, data] of Object.entries(lastResults.data)) {
+                    const safeLang = String(language).replace(/"/g, '""');
+                    csv += `"${safeLang}","${data.totalWords}","",""\n`;
+                    if (lastResults.showPerItem && data.perItemCounts) {
+                        for (const [codename, count] of Object.entries(data.perItemCounts)) {
+                            const safeCode = String(codename).replace(/"/g, '""');
+                            csv += `"${safeLang}","","${safeCode}","${count}"\n`;
+                        }
+                    }
+                }
+            } else if (lastResults.kind === 'assets') {
+                csv = 'Metric,Value\n';
+                csv += `"Total assets","${lastResults.totalAssets}"\n`;
+            } else {
+                return;
+            }
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'kontent_calculator.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
