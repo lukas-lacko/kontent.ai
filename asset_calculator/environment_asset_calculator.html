@@ -60,10 +60,53 @@
             background-color: #0056b3;
         }
 
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
         .loading {
             color: #007bff;
             font-weight: bold;
             margin-top: 15px;
+        }
+
+        .results {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .results h3 {
+            margin: 0 0 12px;
+            text-align: center;
+        }
+
+        .results table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .results th,
+        .results td {
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .results th {
+            background-color: #e9ecef;
+        }
+
+        .results td.count {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            width: 120px;
+        }
+
+        .results tr.total-row td {
+            font-weight: bold;
+            background-color: #f8f9fa;
         }
     </style>
 </head>
@@ -77,7 +120,7 @@
         <button id="fetchButton">Count Assets</button>
         <div id="errorContainer" class="error"></div>
         <div id="loadingContainer" class="loading"></div>
-        <div id="assetsCount"></div>
+        <div id="assetsCount" class="results"></div>
     </div>
     
     <script>
@@ -89,6 +132,7 @@
             const errorContainer = document.getElementById("errorContainer");
             const assetsCountContainer = document.getElementById("assetsCount");
             const loadingContainer = document.getElementById("loadingContainer");
+            const fetchButton = document.getElementById("fetchButton");
 
             errorContainer.textContent = "";
             assetsCountContainer.textContent = "";
@@ -105,10 +149,56 @@
 
             let totalAssets = 0;
             let continuationToken = null;
+            // Counts only — never store full asset objects
+            const extensionCounts = Object.create(null);
             const apiUrl = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
 
+            fetchButton.disabled = true;
+
+            function getExtensionFromUrl(url) {
+                if (!url) return "(unknown)";
+                // Strip query/hash, then take the segment after the last '.'
+                const path = url.split(/[?#]/, 1)[0];
+                const lastSlash = path.lastIndexOf("/");
+                const fileName = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+                const lastDot = fileName.lastIndexOf(".");
+                if (lastDot < 0 || lastDot === fileName.length - 1) return "(unknown)";
+                return fileName.slice(lastDot + 1).toLowerCase();
+            }
+
+            function tallyPage(assets) {
+                for (let i = 0; i < assets.length; i++) {
+                    const ext = getExtensionFromUrl(assets[i].url);
+                    extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+                }
+                totalAssets += assets.length;
+            }
+
+            function renderResults() {
+                const rows = Object.keys(extensionCounts)
+                    .sort((a, b) => extensionCounts[b] - extensionCounts[a] || a.localeCompare(b))
+                    .map(ext =>
+                        `<tr><td>${escapeHtml(ext)}</td><td class="count">${extensionCounts[ext]}</td></tr>`
+                    )
+                    .join("");
+
+                assetsCountContainer.innerHTML =
+                    `<h3>Total assets: ${totalAssets}</h3>` +
+                    `<table>` +
+                    `<thead><tr><th>Extension</th><th class="count">Count</th></tr></thead>` +
+                    `<tbody>${rows}` +
+                    `<tr class="total-row"><td>Total</td><td class="count">${totalAssets}</td></tr>` +
+                    `</tbody></table>`;
+            }
+
+            function escapeHtml(text) {
+                const el = document.createElement("span");
+                el.textContent = text;
+                return el.innerHTML;
+            }
+
             function fetchPageOfData() {
-                loadingContainer.textContent = "Fetching assets...";
+                loadingContainer.textContent = `Fetching assets... ${totalAssets} so far`;
                 const headers = {
                     Authorization: `Bearer ${bearerToken}`,
                     'Content-Type': 'application/json',
@@ -126,19 +216,22 @@
                     return response.json();
                 })
                 .then(data => {
-                    totalAssets += data.assets.length;
+                    tallyPage(data.assets || []);
                     continuationToken = data.pagination?.continuation_token || null;
 
                     if (continuationToken) {
-                        fetchPageOfData();
+                        // Yield to the event loop so the UI stays responsive across many pages
+                        setTimeout(fetchPageOfData, 0);
                     } else {
                         loadingContainer.textContent = "";
-                        assetsCountContainer.textContent = `Total assets: ${totalAssets}`;
+                        fetchButton.disabled = false;
+                        renderResults();
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     loadingContainer.textContent = "";
+                    fetchButton.disabled = false;
                     errorContainer.textContent = `Error: ${error.message}`;
                 });
             }
