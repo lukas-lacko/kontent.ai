@@ -164,6 +164,35 @@
       font-weight: bold;
       color: #333;
     }
+    .extension-breakdown {
+      margin-top: 8px;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85em;
+      font-weight: normal;
+    }
+    .extension-breakdown th,
+    .extension-breakdown td {
+      border: 1px solid #ddd;
+      padding: 4px 8px;
+      text-align: left;
+    }
+    .extension-breakdown th {
+      background-color: #eee;
+    }
+    .extension-breakdown td.count {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      width: 80px;
+    }
+    .extension-breakdown tr.total-row td {
+      font-weight: bold;
+      background-color: #f5f5f5;
+    }
+    #subscription-extensions {
+      margin: 10px 0;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -185,6 +214,7 @@
     <div id="total-assets-in-subscription">
       <strong> Assets in Subscription:</strong> 0
     </div>
+    <div id="subscription-extensions"></div>
     <div id="errorContainer" class="error"></div>
     <div id="projectsContainer" class="project-list"></div>
   </div>
@@ -198,6 +228,61 @@
     let continuationToken = null;
     let totalAssetsInSubscription = 0; // Global subscription asset count
     const projectAssetsHistory = {}; // Stores last fetched asset count per project
+    const projectExtensionHistory = {}; // Stores last fetched extension counts per project
+    const subscriptionExtensionCounts = Object.create(null);
+
+    function getExtensionFromUrl(url) {
+      if (!url) return "(unknown)";
+      const path = url.split(/[?#]/, 1)[0];
+      const lastSlash = path.lastIndexOf("/");
+      const fileName = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+      const lastDot = fileName.lastIndexOf(".");
+      if (lastDot < 0 || lastDot === fileName.length - 1) return "(unknown)";
+      return fileName.slice(lastDot + 1).toLowerCase();
+    }
+
+    function escapeHtml(text) {
+      const el = document.createElement("span");
+      el.textContent = text;
+      return el.innerHTML;
+    }
+
+    function mergeExtensionCounts(target, source) {
+      for (const ext in source) {
+        target[ext] = (target[ext] || 0) + source[ext];
+      }
+    }
+
+    function subtractExtensionCounts(target, source) {
+      for (const ext in source) {
+        target[ext] = (target[ext] || 0) - source[ext];
+        if (target[ext] <= 0) delete target[ext];
+      }
+    }
+
+    function renderExtensionTable(counts, total) {
+      const rows = Object.keys(counts)
+        .sort((a, b) => counts[b] - counts[a] || a.localeCompare(b))
+        .map(ext =>
+          `<tr><td>${escapeHtml(ext)}</td><td class="count">${counts[ext]}</td></tr>`
+        )
+        .join("");
+
+      if (!rows) return "";
+
+      return (
+        `<table class="extension-breakdown">` +
+        `<thead><tr><th>Extension</th><th class="count">Count</th></tr></thead>` +
+        `<tbody>${rows}` +
+        `<tr class="total-row"><td>Total</td><td class="count">${total}</td></tr>` +
+        `</tbody></table>`
+      );
+    }
+
+    function renderSubscriptionExtensions() {
+      const container = document.getElementById('subscription-extensions');
+      container.innerHTML = renderExtensionTable(subscriptionExtensionCounts, totalAssetsInSubscription);
+    }
 
     // Update the project summary counts based on current project div classes
     function updateProjectSummary() {
@@ -224,7 +309,16 @@
     function countAssetsForEnvironment(environmentId, bearerToken, environmentDiv, callback) {
       let totalAssets = 0;
       let environmentContinuationToken = null;
+      const extensionCounts = Object.create(null);
       const apiUrl = `https://manage.kontent.ai/v2/projects/${environmentId}/assets`;
+
+      function tallyPage(assets) {
+        for (let i = 0; i < assets.length; i++) {
+          const ext = getExtensionFromUrl(assets[i].url);
+          extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+        }
+        totalAssets += assets.length;
+      }
 
       function fetchPageOfData() {
         const headers = {
@@ -242,16 +336,19 @@
             return response.json();
           })
           .then((data) => {
-            totalAssets += data.assets.length;
+            tallyPage(data.assets || []);
             environmentContinuationToken = data.pagination?.continuation_token || null;
             if (environmentContinuationToken) {
-              fetchPageOfData();
+              // Yield so the UI stays responsive across many pages
+              setTimeout(fetchPageOfData, 0);
             } else {
               const assetsCountDiv = document.createElement('div');
               assetsCountDiv.classList.add('assets-count');
-              assetsCountDiv.innerHTML = `Assets in this environment: ${totalAssets}`;
+              assetsCountDiv.innerHTML =
+                `Assets in this environment: ${totalAssets}` +
+                renderExtensionTable(extensionCounts, totalAssets);
               environmentDiv.appendChild(assetsCountDiv);
-              callback(totalAssets);
+              callback({ total: totalAssets, extensionCounts });
               environmentDiv.classList.remove('highlight-red');
               environmentDiv.classList.add('highlight-green');
             }
@@ -259,7 +356,7 @@
           .catch((error) => {
             console.error('Error:', error);
             environmentDiv.innerHTML += `<div class="error">Error: ${error.message}</div>`;
-            callback(0);
+            callback({ total: 0, extensionCounts: Object.create(null), error: true });
             environmentDiv.classList.add('highlight-red');
           });
       }
@@ -277,6 +374,7 @@
 
       if (managementApiKey) {
         let totalAssets = 0;
+        const projectExtensionCounts = Object.create(null);
         let environmentsProcessed = 0;
         let allGreen = true;
         let allRed = true;
@@ -295,15 +393,17 @@
 
         Array.from(environments).forEach((envDiv) => {
           const environmentId = envDiv.dataset.envId;
-          countAssetsForEnvironment(environmentId, managementApiKey, envDiv, (assetsCount) => {
+          countAssetsForEnvironment(environmentId, managementApiKey, envDiv, (result) => {
+            const assetsCount = result.total;
             totalAssets += assetsCount;
+            mergeExtensionCounts(projectExtensionCounts, result.extensionCounts);
             environmentsProcessed++;
 
             if (assetsCount > 0) {
               envDiv.classList.add('highlight-green');
               envDiv.classList.remove('highlight-red');
               allRed = false;
-            } else if (assetsCount === 0 && !envDiv.querySelector('.error')) {
+            } else if (assetsCount === 0 && !result.error) {
               envDiv.classList.remove('highlight-green', 'highlight-red');
             } else {
               envDiv.classList.add('highlight-red');
@@ -312,10 +412,20 @@
             }
 
             if (environmentsProcessed === environments.length) {
-              totalAssetsDiv.innerHTML = `<strong>Assets in Project:</strong> ${totalAssets}`;
+              totalAssetsDiv.innerHTML =
+                `<strong>Assets in Project:</strong> ${totalAssets}` +
+                renderExtensionTable(projectExtensionCounts, totalAssets);
+
               let assetsDifference = totalAssets - (projectAssetsHistory[projectId] || 0);
               totalAssetsInSubscription += assetsDifference;
               projectAssetsHistory[projectId] = totalAssets;
+
+              const previousExtensions = projectExtensionHistory[projectId];
+              if (previousExtensions) {
+                subtractExtensionCounts(subscriptionExtensionCounts, previousExtensions);
+              }
+              mergeExtensionCounts(subscriptionExtensionCounts, projectExtensionCounts);
+              projectExtensionHistory[projectId] = Object.assign(Object.create(null), projectExtensionCounts);
 
               projectDiv.classList.remove('highlight-green', 'highlight-red', 'highlight-orange');
               if (allGreen) {
@@ -326,6 +436,7 @@
                 projectDiv.classList.add('highlight-orange');
               }
               totalAssetsInSubscriptionDiv.innerHTML = `<strong>Assets in Subscription:</strong> ${totalAssetsInSubscription}`;
+              renderSubscriptionExtensions();
 
               // Update project summary counts
               updateProjectSummary();
@@ -344,6 +455,13 @@
       errorContainer.textContent = '';
       projectsContainer.innerHTML = '';
       continuationToken = null;
+      totalAssetsInSubscription = 0;
+      for (const key of Object.keys(projectAssetsHistory)) delete projectAssetsHistory[key];
+      for (const key of Object.keys(projectExtensionHistory)) delete projectExtensionHistory[key];
+      for (const key of Object.keys(subscriptionExtensionCounts)) delete subscriptionExtensionCounts[key];
+      document.getElementById('total-assets-in-subscription').innerHTML =
+        `<strong> Assets in Subscription:</strong> 0`;
+      document.getElementById('subscription-extensions').innerHTML = '';
 
       function fetchPageOfData() {
         const url = `${apiUrl}?continuation_token=${continuationToken || ''}`;
