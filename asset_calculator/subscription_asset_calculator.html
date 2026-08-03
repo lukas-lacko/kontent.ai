@@ -247,6 +247,24 @@
       return el.innerHTML;
     }
 
+    async function fetchWithRetry(url, options, { maxRetries = 6, onRetry } = {}) {
+      let attempt = 0;
+      while (true) {
+        const response = await fetch(url, options);
+        if (response.status !== 429 || attempt >= maxRetries) {
+          return response;
+        }
+        attempt++;
+        const retryAfter = response.headers.get("Retry-After");
+        const retryAfterSec = retryAfter ? Number(retryAfter) : NaN;
+        const waitMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0
+          ? Math.min(retryAfterSec * 1000, 60000)
+          : Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+        if (onRetry) onRetry(attempt, waitMs);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+      }
+    }
+
     function mergeExtensionCounts(target, source) {
       for (const ext in source) {
         target[ext] = (target[ext] || 0) + source[ext];
@@ -328,7 +346,20 @@
         if (environmentContinuationToken) {
           headers['x-continuation'] = environmentContinuationToken;
         }
-        fetch(apiUrl, { method: 'GET', headers: headers })
+        fetchWithRetry(apiUrl, { method: 'GET', headers: headers }, {
+          onRetry: (attempt, waitMs) => {
+            let statusEl = environmentDiv.querySelector('.retry-status');
+            if (!statusEl) {
+              statusEl = document.createElement('div');
+              statusEl.className = 'retry-status';
+              statusEl.style.color = '#856404';
+              statusEl.style.fontSize = '0.85em';
+              environmentDiv.appendChild(statusEl);
+            }
+            statusEl.textContent =
+              `Rate limited (429). Retry ${attempt}/6 in ${Math.ceil(waitMs / 1000)}s... (${totalAssets} so far)`;
+          }
+        })
           .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP error! Status: ${response.status}`);
@@ -336,6 +367,8 @@
             return response.json();
           })
           .then((data) => {
+            const statusEl = environmentDiv.querySelector('.retry-status');
+            if (statusEl) statusEl.remove();
             tallyPage(data.assets || []);
             environmentContinuationToken = data.pagination?.continuation_token || null;
             if (environmentContinuationToken) {
@@ -469,8 +502,16 @@
           Authorization: `Bearer ${bearerToken}`,
           'Content-Type': 'application/json',
         };
-        fetch(url, { method: 'GET', headers: headers })
+        fetchWithRetry(url, { method: 'GET', headers: headers }, {
+          onRetry: (attempt, waitMs) => {
+            errorContainer.style.color = '#856404';
+            errorContainer.textContent =
+              `Rate limited (429). Retry ${attempt}/6 in ${Math.ceil(waitMs / 1000)}s...`;
+          }
+        })
           .then((response) => {
+            errorContainer.style.color = '';
+            errorContainer.textContent = '';
             if (!response.ok) {
               throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -522,6 +563,7 @@
           })
           .catch((error) => {
             console.error('Error:', error);
+            errorContainer.style.color = '';
             errorContainer.textContent = `Error: ${error.message}`;
           });
       }
