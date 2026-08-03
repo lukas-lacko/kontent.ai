@@ -98,6 +98,30 @@
             padding: 6px 12px;
             max-width: 420px;
         }
+        .extension-breakdown {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .extension-breakdown th,
+        .extension-breakdown td {
+            border: 1px solid #d0d7e2;
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .extension-breakdown th {
+            background-color: #e2e8f3;
+        }
+        .extension-breakdown td.count {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            width: 90px;
+        }
+        .extension-breakdown tr.total-row td {
+            font-weight: bold;
+            background-color: #e8eef8;
+        }
         .hidden {
             display: none;
         }
@@ -354,9 +378,15 @@
                         throw new Error('Management API Key is required for assets');
                     }
                     resultElement.innerHTML = 'Fetching assets...';
-                    const totalAssets = await countAssetsWithMapi(envId, managementKey);
-                    resultElement.innerHTML = `<div class="results-container"><div class="group-section"><div class="group-name">Assets</div><div class="language-count">Total assets: ${totalAssets}</div></div></div>`;
-                    lastResults = { kind: 'assets', totalAssets };
+                    const { totalAssets, extensionCounts } = await countAssetsWithMapi(
+                        envId,
+                        managementKey,
+                        (soFar) => {
+                            resultElement.innerHTML = `Fetching assets... ${soFar} so far`;
+                        }
+                    );
+                    renderAssetResults(totalAssets, extensionCounts);
+                    lastResults = { kind: 'assets', totalAssets, extensionCounts };
                     exportCsvBtn.disabled = false;
                 }
             } catch (error) {
@@ -489,9 +519,48 @@
             resultElement.innerHTML = html;
         }
 
-        async function countAssetsWithMapi(envId, managementKey) {
+        function getExtensionFromUrl(url) {
+            if (!url) return '(unknown)';
+            const path = url.split(/[?#]/, 1)[0];
+            const lastSlash = path.lastIndexOf('/');
+            const fileName = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+            const lastDot = fileName.lastIndexOf('.');
+            if (lastDot < 0 || lastDot === fileName.length - 1) return '(unknown)';
+            return fileName.slice(lastDot + 1).toLowerCase();
+        }
+
+        function escapeHtml(text) {
+            const el = document.createElement('span');
+            el.textContent = text;
+            return el.innerHTML;
+        }
+
+        function renderAssetResults(totalAssets, extensionCounts) {
+            const resultElement = document.getElementById('result');
+            const rows = Object.keys(extensionCounts)
+                .sort((a, b) => extensionCounts[b] - extensionCounts[a] || a.localeCompare(b))
+                .map(ext =>
+                    `<tr><td>${escapeHtml(ext)}</td><td class="count">${extensionCounts[ext]}</td></tr>`
+                )
+                .join('');
+
+            resultElement.innerHTML =
+                `<div class="results-container"><div class="group-section">` +
+                `<div class="group-name">Assets</div>` +
+                `<div class="language-count">Total assets: ${totalAssets}</div>` +
+                `<table class="extension-breakdown">` +
+                `<thead><tr><th>Extension</th><th class="count">Count</th></tr></thead>` +
+                `<tbody>${rows}` +
+                `<tr class="total-row"><td>Total</td><td class="count">${totalAssets}</td></tr>` +
+                `</tbody></table>` +
+                `</div></div>`;
+        }
+
+        async function countAssetsWithMapi(envId, managementKey, onProgress) {
             let totalAssets = 0;
             let continuationToken = null;
+            // Counts only — never store full asset objects
+            const extensionCounts = Object.create(null);
             const apiUrl = `https://manage.kontent.ai/v2/projects/${envId}/assets`;
 
             do {
@@ -516,13 +585,25 @@
                     throw new Error(errorMsg);
                 }
 
-                totalAssets += data.assets.length;
+                const assets = data.assets || [];
+                for (let i = 0; i < assets.length; i++) {
+                    const ext = getExtensionFromUrl(assets[i].url);
+                    extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+                }
+                totalAssets += assets.length;
+                if (onProgress) onProgress(totalAssets);
+
                 continuationToken = data.pagination && data.pagination.continuation_token
                     ? data.pagination.continuation_token
                     : null;
+
+                if (continuationToken) {
+                    // Yield so the UI stays responsive across many pages
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
             } while (continuationToken);
 
-            return totalAssets;
+            return { totalAssets, extensionCounts };
         }
 
         async function fetchLanguages(justReturnList = false) {
@@ -652,8 +733,15 @@
                     }
                 }
             } else if (lastResults.kind === 'assets') {
-                csv = 'Metric,Value\n';
-                csv += `"Total assets","${lastResults.totalAssets}"\n`;
+                csv = 'Extension,Count\n';
+                const counts = lastResults.extensionCounts || {};
+                const sortedExts = Object.keys(counts)
+                    .sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+                for (const ext of sortedExts) {
+                    const safeExt = String(ext).replace(/"/g, '""');
+                    csv += `"${safeExt}","${counts[ext]}"\n`;
+                }
+                csv += `"Total","${lastResults.totalAssets}"\n`;
             } else {
                 return;
             }
