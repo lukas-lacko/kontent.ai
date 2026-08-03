@@ -126,6 +126,24 @@
     <script>
         document.getElementById("fetchButton").addEventListener("click", fetchAllAssets);
 
+        async function fetchWithRetry(url, options, { maxRetries = 6, onRetry } = {}) {
+            let attempt = 0;
+            while (true) {
+                const response = await fetch(url, options);
+                if (response.status !== 429 || attempt >= maxRetries) {
+                    return response;
+                }
+                attempt++;
+                const retryAfter = response.headers.get("Retry-After");
+                const retryAfterSec = retryAfter ? Number(retryAfter) : NaN;
+                const waitMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0
+                    ? Math.min(retryAfterSec * 1000, 60000)
+                    : Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+                if (onRetry) onRetry(attempt, waitMs);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
+            }
+        }
+
         function fetchAllAssets() {
             const envId = document.getElementById('envId').value.trim();
             const bearerToken = document.getElementById('bearerToken').value.trim();
@@ -208,7 +226,12 @@
                     headers['x-continuation'] = continuationToken;
                 }
 
-                fetch(apiUrl, { method: 'GET', headers })
+                fetchWithRetry(apiUrl, { method: 'GET', headers }, {
+                    onRetry: (attempt, waitMs) => {
+                        loadingContainer.textContent =
+                            `Rate limited (429). Retry ${attempt}/6 in ${Math.ceil(waitMs / 1000)}s... (${totalAssets} so far)`;
+                    }
+                })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
