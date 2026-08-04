@@ -126,7 +126,10 @@
     <script>
         document.getElementById("fetchButton").addEventListener("click", fetchAllAssets);
 
-        async function fetchWithRetry(url, options, { maxRetries = 6, onRetry } = {}) {
+        const MAX_RETRIES = 20;
+        const PAGE_DELAY_MS = 300;
+
+        async function fetchWithRetry(url, options, { maxRetries = MAX_RETRIES, onRetry } = {}) {
             let attempt = 0;
             while (true) {
                 const response = await fetch(url, options);
@@ -139,7 +142,7 @@
                 const waitMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0
                     ? Math.min(retryAfterSec * 1000, 60000)
                     : Math.min(1000 * Math.pow(2, attempt - 1), 30000);
-                if (onRetry) onRetry(attempt, waitMs);
+                if (onRetry) onRetry(attempt, waitMs, maxRetries);
                 await new Promise(resolve => setTimeout(resolve, waitMs));
             }
         }
@@ -227,9 +230,9 @@
                 }
 
                 fetchWithRetry(apiUrl, { method: 'GET', headers }, {
-                    onRetry: (attempt, waitMs) => {
+                    onRetry: (attempt, waitMs, maxRetries) => {
                         loadingContainer.textContent =
-                            `Rate limited (429). Retry ${attempt}/6 in ${Math.ceil(waitMs / 1000)}s... (${totalAssets} so far)`;
+                            `Rate limited (429). Retry ${attempt}/${maxRetries} in ${Math.ceil(waitMs / 1000)}s... (${totalAssets} so far)`;
                     }
                 })
                 .then(response => {
@@ -243,8 +246,8 @@
                     continuationToken = data.pagination?.continuation_token || null;
 
                     if (continuationToken) {
-                        // Yield to the event loop so the UI stays responsive across many pages
-                        setTimeout(fetchPageOfData, 0);
+                        // Short delay between pages to reduce rate-limit pressure
+                        setTimeout(fetchPageOfData, PAGE_DELAY_MS);
                     } else {
                         loadingContainer.textContent = "";
                         fetchButton.disabled = false;
