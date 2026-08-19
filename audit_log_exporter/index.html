@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audit Log Exporter — How to use</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,650&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #14201b;
+      --muted: #5a6b63;
+      --paper: #f3f0e8;
+      --card: #fffcf7;
+      --line: #d9d3c6;
+      --accent: #1f6f54;
+      --accent-deep: #14523d;
+      --accent-soft: #e4f0ea;
+      --warn: #8a5a10;
+      --warn-bg: #f8efd9;
+      --code-bg: #1a2420;
+      --code-fg: #e8efe9;
+      --shadow: 0 12px 40px rgba(20, 32, 27, 0.08);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #e7efe9 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #efe6d6 0%, transparent 50%),
+        var(--paper);
+      line-height: 1.55;
+    }
+    main {
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 650;
+      font-size: clamp(1.8rem, 4vw, 2.35rem);
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin: 0 0 0.4rem;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin: 0 0 2rem;
+      max-width: 38rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.35rem 1.4rem;
+      margin-bottom: 1.15rem;
+    }
+    .card h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.2rem;
+      font-weight: 560;
+      margin: 0 0 1rem;
+      letter-spacing: -0.02em;
+    }
+    .steps {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      counter-reset: step;
+      display: grid;
+      gap: 1rem;
+    }
+    .steps > li {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.85rem 1rem;
+      align-items: start;
+    }
+    .steps > li::before {
+      content: counter(step);
+      width: 1.85rem;
+      height: 1.85rem;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: grid;
+      place-items: center;
+      margin-top: 0.1rem;
+    }
+    .step-title { font-weight: 700; margin: 0 0 0.35rem; }
+    .step-body { color: var(--muted); margin: 0; }
+    .step-body strong { color: var(--ink); font-weight: 600; }
+    .env-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+    label.env-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+      width: 100%;
+    }
+    input[type="text"] {
+      flex: 1 1 14rem;
+      min-width: 12rem;
+      padding: 0.65rem 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: 500 0.95rem/1.2 "IBM Plex Mono", monospace;
+      background: #fff;
+      color: var(--ink);
+    }
+    input[type="text"]:focus {
+      outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+      border-color: var(--accent);
+    }
+    .url-preview {
+      width: 100%;
+      margin-top: 0.35rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+      color: var(--muted);
+      word-break: break-all;
+      background: var(--accent-soft);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem;
+    }
+    .url-preview a { color: var(--accent-deep); font-weight: 500; }
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      font: 600 0.92rem/1 "Source Sans 3", sans-serif;
+      padding: 0.7rem 1rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      color: #fff;
+      background: var(--accent);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .btn:hover { background: var(--accent-deep); }
+    .btn:active { transform: translateY(1px); }
+    .btn-secondary {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .btn-secondary:hover { background: var(--paper); }
+    .tip {
+      background: var(--warn-bg);
+      color: var(--warn);
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.92rem;
+      margin-top: 0.85rem;
+    }
+    .code-shell {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid #0f1714;
+      background: var(--code-bg);
+      box-shadow: var(--shadow);
+      margin-bottom: 1.15rem;
+    }
+    .code-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.65rem 0.85rem;
+      background: #121a17;
+      border-bottom: 1px solid #2a3530;
+    }
+    .code-toolbar .dots {
+      display: flex;
+      gap: 0.35rem;
+    }
+    .code-toolbar .dots span {
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      background: #3d4a44;
+    }
+    .code-toolbar .dots span:nth-child(1) { background: #c97b6a; }
+    .code-toolbar .dots span:nth-child(2) { background: #c9a86a; }
+    .code-toolbar .dots span:nth-child(3) { background: #6aa87a; }
+    .code-title {
+      color: #9aada3;
+      font-size: 0.8rem;
+      font-family: "IBM Plex Mono", monospace;
+      margin-right: auto;
+      margin-left: 0.75rem;
+    }
+    .code-frame-wrap {
+      height: min(28rem, 60vh);
+      position: relative;
+    }
+    #code-view {
+      margin: 0;
+      height: 100%;
+      overflow: auto;
+      padding: 1rem 1.1rem 1.25rem;
+      color: var(--code-fg);
+      font: 400 0.8rem/1.55 "IBM Plex Mono", monospace;
+      white-space: pre;
+      tab-size: 2;
+    }
+    .ideas {
+      display: grid;
+      gap: 0.55rem;
+      margin: 0;
+      padding-left: 1.1rem;
+      color: var(--muted);
+    }
+    .ideas li { padding-left: 0.15rem; }
+    .footer-note {
+      margin-top: 0.5rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .copied { background: var(--accent-deep) !important; }
+    code {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.88em;
+      background: var(--accent-soft);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 class="brand">Audit Log Exporter</h1>
+    <p class="lede">
+      Export Kontent.ai audit log events to a JSON file from your browser — while you’re logged in. No extensions required.
+    </p>
+
+    <section class="card">
+      <h2>How to use</h2>
+      <ol class="steps">
+        <li>
+          <div>
+            <p class="step-title">Open the Audit Log page (logged in)</p>
+            <p class="step-body">Enter your environment ID, then open the audit log in a new tab. Adjust  audit log filter if needed.</p>
+            <div class="env-row">
+              <label class="env-label" for="env-id">Environment ID</label>
+              <input id="env-id" type="text" spellcheck="false" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+              <a class="btn" id="open-audit" href="#" target="_blank" rel="noopener">Open audit log</a>
+            </div>
+            <div class="url-preview" id="url-preview">https://app.kontent.ai/&lt;env_id&gt;/settings/audit-log</div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="step-title">Copy the script &amp; paste it into the Console</p>
+            <p class="step-body">On the audit log tab, press <strong>F12</strong> (or Ctrl+Shift+J), open the <strong>Console</strong>, paste the script, and press Enter.</p>
+            <p class="tip">If Chrome blocks the paste, type <strong>allow pasting</strong> in the console and try again.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="step-title">Wait for the JSON download</p>
+            <p class="step-body">The script scrolls to load events, expands rows, shows a progress bar in the console, then downloads a <strong>.json</strong> file. Check your Downloads folder when it says Done.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <div class="code-shell">
+      <div class="code-toolbar">
+        <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span class="code-title">export-audit-log script</span>
+        <button type="button" class="btn" id="copy-btn">Copy code</button>
+      </div>
+      <div class="code-frame-wrap">
+        <pre id="code-view" tabindex="0" aria-label="Exporter script source"></pre>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Helpful tips</h2>
+      <ul class="ideas">
+        <li>Set the <strong>From / To</strong> date filters in Kontent first if you only need a date range.</li>
+        <li>Stay on the audit log tab until the download finishes.</li>
+        <li>Your environment ID is remembered in this browser for next time.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <script type="application/json" id="embedded-source">"/**\r\n * Kontent.ai Audit Log → JSON exporter\r\n *\r\n * 1. Open the Audit Log page (logged in).\r\n * 2. Paste this into the DevTools Console (F12) and press Enter.\r\n * 3. The script scrolls to load events, expands rows, then downloads JSON.\r\n *\r\n * Progress is redrawn in the console (clear + reprint) so the bar stays\r\n * visible without expanding any object.\r\n */\r\n\r\n(async () => {\r\n  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\r\n  const clean = (el) => (el?.textContent ?? '').replace(/\\s+/g, ' ').trim();\r\n  const getEvents = () => [\r\n    ...document.querySelectorAll('article[data-ui-element=\"audit-log-event\"]'),\r\n  ];\r\n\r\n  const BAR_W = 24;\r\n  const makeBar = (current, total) => {\r\n    if (total == null || total \u003c= 0) {\r\n      const filled = Math.max(1, current % (BAR_W + 1));\r\n      return `${'█'.repeat(filled)}${'░'.repeat(BAR_W - filled)}  ${current}`;\r\n    }\r\n    const ratio = Math.min(1, current / total);\r\n    const filled = Math.round(ratio * BAR_W);\r\n    const pct = Math.round(ratio * 100);\r\n    return `${'█'.repeat(filled)}${'░'.repeat(BAR_W - filled)}  ${current}/${total} (${pct}%)`;\r\n  };\r\n\r\n  const progress = {\r\n    stage: 'starting',\r\n    bar: makeBar(0, null),\r\n    current: 0,\r\n    total: null,\r\n    status: 'Starting…',\r\n  };\r\n\r\n  let lastPaint = 0;\r\n  let lastStage = '';\r\n\r\n  const paintProgress = (force = false) => {\r\n    const now = Date.now();\r\n    // Always paint on stage change; otherwise throttle to avoid flicker.\r\n    if (!force && progress.stage === lastStage && now - lastPaint \u003c 120) return;\r\n    lastPaint = now;\r\n    lastStage = progress.stage;\r\n\r\n    console.clear();\r\n    console.log('%cAudit log export', 'font-weight:600');\r\n    console.log(\r\n      '%c' + progress.bar,\r\n      'font-family:ui-monospace,Consolas,monospace;font-size:13px'\r\n    );\r\n    console.log(progress.status);\r\n  };\r\n\r\n  const setProgress = (stage, current, total = null, status) => {\r\n    progress.stage = stage;\r\n    progress.current = current;\r\n    progress.total = total;\r\n    progress.bar = makeBar(current, total);\r\n    progress.status =\r\n      status ??\r\n      (total != null\r\n        ? `${stage}: ${current} / ${total}`\r\n        : `${stage}: ${current} so far`);\r\n    paintProgress();\r\n  };\r\n\r\n  setProgress('starting', 0, null, 'Starting…');\r\n\r\n  if (!getEvents().length) {\r\n    setProgress('error', 0, null, 'No audit log events found on this page.');\r\n    console.error(progress.status);\r\n    return;\r\n  }\r\n\r\n  // Find the nested element that actually scrolls the audit list (not the window).\r\n  const findScrollParent = (el) => {\r\n    let node = el?.parentElement;\r\n    while (node && node !== document.body) {\r\n      const style = getComputedStyle(node);\r\n      const canScroll =\r\n        /(auto|scroll|overlay)/.test(style.overflowY) ||\r\n        /(auto|scroll|overlay)/.test(style.overflow);\r\n      if (canScroll && node.scrollHeight > node.clientHeight + 10) return node;\r\n      node = node.parentElement;\r\n    }\r\n    return (\r\n      document.querySelector('.scroll-grid__container') ||\r\n      document.querySelector('.scroll-grid') ||\r\n      document.scrollingElement\r\n    );\r\n  };\r\n\r\n  const scroller = findScrollParent(getEvents()[0]);\r\n\r\n  // --- Stage 1: scroll / load ---\r\n  setProgress('scrolling', getEvents().length, null, 'Scrolling to load events…');\r\n  let stable = 0;\r\n  let lastCount = 0;\r\n  for (let i = 0; i \u003c 80 && stable \u003c 4; i++) {\r\n    const list = getEvents();\r\n    const count = list.length;\r\n    setProgress('scrolling', count, null, `Loading events… ${count} found`);\r\n    if (count === lastCount) stable++;\r\n    else {\r\n      stable = 0;\r\n      lastCount = count;\r\n    }\r\n    scroller.scrollTop = scroller.scrollHeight;\r\n    list[list.length - 1]?.scrollIntoView({ block: 'end', behavior: 'auto' });\r\n    await sleep(400);\r\n  }\r\n\r\n  const events = getEvents();\r\n  const total = events.length;\r\n\r\n  // --- Stage 2: expand ---\r\n  const expandButtons = [\r\n    ...document.querySelectorAll(\r\n      'article[data-ui-element=\"audit-log-event\"] button[data-ui-action=\"expand\"]'\r\n    ),\r\n  ];\r\n  setProgress(\r\n    'expanding',\r\n    0,\r\n    expandButtons.length || total,\r\n    `Expanding ${expandButtons.length} row(s)…`\r\n  );\r\n\r\n  for (let i = 0; i \u003c expandButtons.length; i++) {\r\n    expandButtons[i].click();\r\n    setProgress(\r\n      'expanding',\r\n      i + 1,\r\n      expandButtons.length,\r\n      `Expanding rows… ${i + 1}/${expandButtons.length}`\r\n    );\r\n    await sleep(80);\r\n  }\r\n\r\n  // Wait for detail panels to render\r\n  const deadline = Date.now() + 15000;\r\n  while (Date.now() \u003c deadline) {\r\n    const ready = events.filter((a) =>\r\n      a.querySelector('[data-ui-element=\"audit-log-event-details\"]')\r\n    ).length;\r\n    setProgress(\r\n      'waiting',\r\n      ready,\r\n      total,\r\n      `Waiting for details… ${ready}/${total}`\r\n    );\r\n    if (ready >= total) break;\r\n    await sleep(200);\r\n  }\r\n\r\n  const readSections = (article) => {\r\n    const sections = {};\r\n    const details = article.querySelector(\r\n      '[data-ui-element=\"audit-log-event-details\"]'\r\n    );\r\n    if (!details) return sections;\r\n\r\n    for (const table of details.querySelectorAll(\r\n      'table.audit-log__event-properties__table'\r\n    )) {\r\n      const caption =\r\n        clean(table.querySelector('caption.audit-log__event-properties__title')) ||\r\n        'Details';\r\n      const section = {};\r\n\r\n      for (const row of table.querySelectorAll(\r\n        'tr.audit-log-event-properties__row'\r\n      )) {\r\n        const title = clean(\r\n          row.querySelector('th.audit-log__event__property-title')\r\n        );\r\n        const cell = row.querySelector('td.audit-log__event__property-value');\r\n        if (!title || !cell) continue;\r\n\r\n        let value = [...cell.childNodes]\r\n          .filter((n) => n.nodeType === Node.TEXT_NODE)\r\n          .map((n) => n.textContent)\r\n          .join('')\r\n          .replace(/\\s+/g, ' ')\r\n          .trim();\r\n\r\n        // Date: keep only up to \"UTC\" (button text also contains an sr-only note).\r\n        if (title === 'Date') {\r\n          const hasUtcBtn = !!cell.querySelector(\r\n            'button[data-ui-component=\"QuinaryButton\"]'\r\n          );\r\n          if (hasUtcBtn && value && !/\\bUTC\\b/i.test(value)) {\r\n            value = `${value} UTC`;\r\n          }\r\n          const utcMatch = value.match(/^(.*?\\bUTC)\\b/i);\r\n          value = utcMatch\r\n            ? utcMatch[1].trim()\r\n            : value.replace(/\\s*Shown in UTC[\\s\\S]*$/i, '').trim();\r\n        } else if (!value) {\r\n          value = clean(cell);\r\n        }\r\n\r\n        section[title] = value;\r\n      }\r\n\r\n      sections[caption] = section;\r\n    }\r\n    return sections;\r\n  };\r\n\r\n  // --- Stage 3: scrape ---\r\n  const data = [];\r\n  for (let i = 0; i \u003c events.length; i++) {\r\n    const article = events[i];\r\n    const timeEl = article.querySelector('time[datetime]');\r\n    const descEl = article.querySelector(\r\n      '[data-ui-element=\"audit-log-event-description\"]'\r\n    );\r\n    data.push({\r\n      datetime: timeEl?.getAttribute('datetime') ?? '',\r\n      display_time: clean(timeEl),\r\n      description: clean(descEl),\r\n      ...readSections(article),\r\n    });\r\n    setProgress(\r\n      'exporting',\r\n      i + 1,\r\n      total,\r\n      `Building JSON… ${i + 1}/${total}`\r\n    );\r\n  }\r\n\r\n  // --- Stage 4: download ---\r\n  setProgress('downloading', total, total, 'Preparing download…');\r\n  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');\r\n  const filename = `audit-log-export-${stamp}.json`;\r\n  const blob = new Blob(\r\n    [JSON.stringify({ count: data.length, events: data }, null, 2)],\r\n    { type: 'application/json' }\r\n  );\r\n  const url = URL.createObjectURL(blob);\r\n  const a = Object.assign(document.createElement('a'), {\r\n    href: url,\r\n    download: filename,\r\n  });\r\n  a.click();\r\n  URL.revokeObjectURL(url);\r\n\r\n  setProgress('done', total, total, `Done — downloaded ${filename}`);\r\n  paintProgress(true);\r\n  console.log('%c' + progress.status, 'color:green;font-weight:600');\r\n  console.log('Sample:', data[0]);\r\n})();\r\n"</script>
+  <script>
+    const STORAGE_KEY = "audit-log-exporter-env-id";
+    const envInput = document.getElementById("env-id");
+    const openBtn = document.getElementById("open-audit");
+    const urlPreview = document.getElementById("url-preview");
+    const codeView = document.getElementById("code-view");
+    const copyBtn = document.getElementById("copy-btn");
+
+    const sourceCode = JSON.parse(
+      document.getElementById("embedded-source").textContent
+    );
+    codeView.textContent = sourceCode;
+
+    const buildUrl = (id) => {
+      const trimmed = (id || "").trim();
+      if (!trimmed) return null;
+      return "https://app.kontent.ai/" + encodeURIComponent(trimmed) + "/settings/audit-log";
+    };
+
+    const refreshEnvUi = () => {
+      const url = buildUrl(envInput.value);
+      if (url) {
+        urlPreview.innerHTML =
+          '<a href="' + url + '" target="_blank" rel="noopener">' + url + "</a>";
+        openBtn.href = url;
+      } else {
+        urlPreview.textContent = "https://app.kontent.ai/<env_id>/settings/audit-log";
+        openBtn.href = "#";
+      }
+      localStorage.setItem(STORAGE_KEY, envInput.value.trim());
+    };
+
+    openBtn.addEventListener("click", (e) => {
+      if (!buildUrl(envInput.value)) {
+        e.preventDefault();
+        envInput.focus();
+        alert("Enter your environment ID first.");
+      }
+    });
+
+    envInput.value = localStorage.getItem(STORAGE_KEY) || "";
+    envInput.addEventListener("input", refreshEnvUi);
+    refreshEnvUi();
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(sourceCode);
+      } catch (_) {
+        const range = document.createRange();
+        range.selectNodeContents(codeView);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand("copy");
+        sel.removeAllRanges();
+      }
+      const prev = copyBtn.textContent;
+      copyBtn.textContent = "Copied!";
+      copyBtn.classList.add("copied");
+      setTimeout(() => {
+        copyBtn.textContent = prev;
+        copyBtn.classList.remove("copied");
+      }, 1600);
+    });
+  </script>
+</body>
+</html>
